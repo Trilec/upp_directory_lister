@@ -43,6 +43,7 @@ private:
     void HandleBrowseTransferTarget();
     void HandleGenerate();
     void HandleAbort();
+    void HandleHelp();
     void HandleApplyRename();
     void HandleApplyTransfer();
 
@@ -164,6 +165,7 @@ private:
     // Output panel and footer.
     UiButton generate_button_;
     UiButton abort_button_;
+    UiButton help_button_;
     UiButton exit_button_;
     UiLabel state_label_;
     DocEdit output_edit_;

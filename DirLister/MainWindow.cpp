@@ -10,6 +10,156 @@ namespace {
 
 using namespace DirListerTheme;
 
+class HelpDialog : public TopWindow {
+public:
+    typedef HelpDialog CLASSNAME;
+
+    HelpDialog()
+    {
+        Title("DirLister Help");
+        Sizeable().Zoomable();
+        SetRect(0, 0, DPI(900), DPI(720));
+
+        Add(shell_);
+        shell_.Add(title_);
+        shell_.Add(doc_panel_);
+        shell_.Add(close_);
+        doc_panel_.Add(doc_);
+
+        title_.SetTitle("DirLister Help")
+              .SetSubTitle("How to use setup, rename, transfer, and apply flows")
+              .SetCopyText(String())
+              .SetMedia(ICON_DESIGN_SETTINGS_48(), Size(DPI(16), DPI(16)))
+              .SetMediaSide(UiAlign::LEFT)
+              .SetMediaReserve(DPI(16));
+        title_.ShowRule(false).ShowBottomLine(false).EnableHover(false).SetSelectable(false);
+
+        close_.SetText("Close");
+        close_.WhenAction << [=] { Close(); };
+
+        doc_.SetText(
+            "DirLister is designed for three main jobs:\n\n"
+            "1. Setup / Listing\n"
+            "Use the Setup page to choose a source directory, apply filters, and generate a clean directory listing.\n"
+            "- File Pattern filters files by wildcard, for example: *.cpp;*.h;*.md\n"
+            "- Directory Pattern filters matching folders, for example: src*;docs*\n"
+            "- Size Threshold lets you include only files within a chosen size range\n"
+            "- Date Range filters files by modification date\n"
+            "- Sorting & Structure controls name/type/date/size ordering and directory placement\n"
+            "- Display Options control whether path, size, date, and extension are shown\n\n"
+            "Why it helps:\n"
+            "DirLister makes it easy to generate a copy/paste-ready inventory of a project tree, media folder, or archive.\n\n"
+            "Example:\n"
+            "Source: D:/projects/source\n"
+            "Pattern: *.cpp;*.h\n"
+            "Recursive: On, Depth: 2\n"
+            "Result: A formatted list of source files and folders ready for export or review.\n\n"
+            "2. Rename\n"
+            "The Rename page lets you build a stack of rename processes and preview the result before applying it.\n"
+            "Supported process types include:\n"
+            "- Search & Replace\n"
+            "- Case Transform\n"
+            "- Alphanumeric Only\n"
+            "- Numbering\n"
+            "- Prefix\n"
+            "- Extension Replace\n"
+            "- Insert Left / Insert Right\n\n"
+            "How to use it:\n"
+            "- Choose a process type\n"
+            "- Fill in the parameters\n"
+            "- Use Add to push it into the stack\n"
+            "- Drag rows in the stack to change order\n"
+            "- Enter a sample name in the preview input if needed\n"
+            "- Review the sample results from the current source directory\n"
+            "- Click Apply Rename to rename matching entries in the active source directory\n\n"
+            "Safety notes:\n"
+            "- Rename asks for confirmation before applying\n"
+            "- The app uses a two-phase rename pass to reduce collision problems\n"
+            "- Preview first if you are changing extensions or using numbering\n\n"
+            "Example:\n"
+            "Process stack:\n"
+            "1) Search & Replace: space -> _\n"
+            "2) Case: lower\n"
+            "3) Prefix: archived_\n"
+            "Result: My File.TXT becomes archived_my_file.txt\n\n"
+            "3. Transfer\n"
+            "The Transfer page copies files and folders from the active source directory to a target directory.\n"
+            "Options include:\n"
+            "- Preserve Tree: keep the folder structure\n"
+            "- Flatten Files: copy files into one destination level\n"
+            "- Verify MD5 Hashes: compare copied file content after transfer\n"
+            "- Conflict handling:\n"
+            "  Auto-Increment: creates a new name if the target exists\n"
+            "  Overwrite Existing: replaces the target file\n"
+            "  Skip Existing: leaves existing files unchanged\n\n"
+            "Example:\n"
+            "Source: D:/photos/2026\n"
+            "Target: E:/backup/photos\n"
+            "Preserve Tree: On\n"
+            "Conflict: Auto-Increment\n"
+            "Result: The folder tree is recreated in the backup target and name collisions are preserved safely.\n\n"
+            "Preview / Apply flow\n"
+            "- Generate List previews the directory contents in the main output area\n"
+            "- Rename preview shows how stacked operations will change names\n"
+            "- Apply Rename performs the actual rename after confirmation\n"
+            "- Apply Transfer performs the actual copy after confirmation\n"
+            "- Operation reports are written to the main output panel\n\n"
+            "Good practice\n"
+            "- Use shallow depth first when testing a new setup\n"
+            "- Preview rename stacks on a sample directory before applying broadly\n"
+            "- Use Skip Existing or Auto-Increment when copying into an existing archive\n"
+            "- Keep Linux Slashes enabled if you need copy/paste-friendly paths for tools or documentation\n"
+        );
+    }
+
+    virtual void Layout() override
+    {
+        shell_.SetRect(GetSize());
+        int m = DPI(14);
+        title_.SetRect(m, m, GetSize().cx - m * 2, DPI(34));
+        close_.SetRect(GetSize().cx - m - DPI(90), GetSize().cy - m - DPI(30), DPI(90), DPI(30));
+        doc_panel_.SetRect(m, DPI(56), GetSize().cx - m * 2, GetSize().cy - DPI(112));
+        doc_.SetRect(DPI(1), DPI(1), doc_panel_.GetSize().cx - DPI(2), doc_panel_.GetSize().cy - DPI(2));
+    }
+
+    virtual void Paint(Draw& w) override
+    {
+        w.DrawRect(GetSize(), BodyBg());
+    }
+
+    void ApplyTheme()
+    {
+        shell_.SetStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
+        doc_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
+
+        UiTitleCard::Style title_style = UiTheme::ResolveTitleCard();
+        for(int i = 0; i < 4; i++) {
+            title_style.palette.face[i] = UiFill::None();
+            title_style.palette.frame[i] = Null;
+            title_style.palette.ink[i] = White();
+        }
+        title_style.transparent = true;
+        title_style.metrics.face_enabled = false;
+        title_style.metrics.frame_enabled = false;
+        title_style.metrics.content_margin = Rect(0, 0, 0, 0);
+        title_style.title_font = AppSans(18, true);
+        title_style.subtitle_font = AppSans(9, false);
+        title_style.subtitle_color = BlueText();
+        title_style.media_side = UiAlign::LEFT;
+        title_style.media_gap = DPI(8);
+        title_.SetStyle(title_style);
+
+        close_.SetStyle(MakeActionStyle(false));
+    }
+
+private:
+    UiPanel shell_;
+    UiTitleCard title_;
+    UiPanel doc_panel_;
+    UiDoc doc_;
+    UiButton close_;
+};
+
 // Human-readable descriptions for the rename operator editor.
 String RenameTypeDescription(RenameStepType type)
 {
@@ -244,6 +394,7 @@ void MainWindow::BuildUi()
 
     main_panel_.Add(generate_button_);
     main_panel_.Add(abort_button_);
+    main_panel_.Add(help_button_);
     main_panel_.Add(exit_button_);
     main_panel_.Add(output_format_);
     main_panel_.Add(slash_mode_);
@@ -298,6 +449,9 @@ void MainWindow::BuildUi()
     generate_button_.WhenAction << [=] { HandleGenerate(); };
     abort_button_.SetText("ABORT");
     abort_button_.WhenAction << [=] { HandleAbort(); };
+    help_button_.SetText("HELP");
+    help_button_.SetIcon(ICON_DESIGN_SETTINGS_48()).SetIconSize(15, 15).SetContentGap(DPI(10));
+    help_button_.WhenAction << [=] { HandleHelp(); };
 
     output_format_.Add("Text Output", (int)OutputFormat::Text)
                   .Add("CSV Output", (int)OutputFormat::Csv)
@@ -627,6 +781,7 @@ void MainWindow::ApplyTheme()
     transfer_browse_.SetStyle(MakeSmallButtonStyle());
     generate_button_.SetStyle(MakeActionStyle(true));
     abort_button_.SetStyle(MakeActionStyle(false));
+    help_button_.SetStyle(MakeActionStyle(false));
     rename_save_button_.SetStyle(MakeActionStyle(false));
     rename_apply_button_.SetStyle(MakeActionStyle(true));
     transfer_apply_button_.SetStyle(MakeActionStyle(true));
@@ -693,8 +848,9 @@ void MainWindow::Layout()
     abort_button_.SetRect(mx + DPI(132), my, DPI(82), DPI(30));
     output_format_.SetRect(mx + DPI(240), my + DPI(1), DPI(128), DPI(28));
     slash_mode_.SetRect(mx + DPI(376), my + DPI(1), DPI(132), DPI(28));
+    help_button_.SetRect(ms.cx - mx - DPI(246), my, DPI(118), DPI(30));
     exit_button_.SetRect(ms.cx - mx - DPI(118), my, DPI(118), DPI(30));
-    state_label_.SetRect(ms.cx - mx - DPI(178), my + DPI(4), DPI(52), DPI(20));
+    state_label_.SetRect(ms.cx - mx - DPI(306), my + DPI(4), DPI(52), DPI(20));
 
     int output_top = my + DPI(44);
     int footer_h = DPI(18);
@@ -915,6 +1071,13 @@ void MainWindow::HandleAbort()
 {
     UpdateStatus("IDLE", false);
     PromptOK("Abort is wired for the next threaded scan phase. The current first pass runs synchronously.");
+}
+
+void MainWindow::HandleHelp()
+{
+    HelpDialog dlg;
+    dlg.ApplyTheme();
+    dlg.Run();
 }
 
 void MainWindow::UpdateStatus(const String& text, bool busy)
