@@ -1,0 +1,22 @@
+description "Directory Lister rewrite in U++\377";
+
+uses
+	Core,
+	Draw,
+	CtrlCore,
+	CtrlLib,
+	Ui;
+
+file
+	main.cpp,
+	DirectoryEngine.h,
+	DirectoryEngine.cpp,
+	DirListerTheme.h,
+	DirListerTheme.cpp,
+	RenameEngine.h,
+	RenameEngine.cpp,
+	MainWindow.h,
+	MainWindow.cpp;
+
+mainconfig
+	"" = "GUI";
