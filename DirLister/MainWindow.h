@@ -43,6 +43,8 @@ private:
     void HandleBrowseTransferTarget();
     void HandleGenerate();
     void HandleAbort();
+    void HandleApplyRename();
+    void HandleApplyTransfer();
 
     // Small UI synchronization helpers.
     void UpdateStatus(const String& text, bool busy = false);
@@ -64,6 +66,7 @@ private:
     void HandleRenameFieldsChanged();
     Vector<String> CollectRenameSamples(Index<String>& existing_names) const;
     void SyncRenameSaveState();
+    void SetOutputReport(const String& text);
 
 private:
     // Window shell and persistent navigation controls.
@@ -127,6 +130,7 @@ private:
     UiButton rename_save_button_;
     UiToolButton rename_add_button_;
     UiToolButton rename_remove_button_;
+    UiButton rename_apply_button_;
     UiLabel rename_params_label_;
     UiDropdown rename_mode_;
     UiLineEdit rename_param_a_;
@@ -155,6 +159,7 @@ private:
     UiCheckBox transfer_flatten_;
     UiDropdown transfer_conflict_;
     UiCheckBox transfer_verify_hash_;
+    UiButton transfer_apply_button_;
 
     // Output panel and footer.
     UiButton generate_button_;

@@ -65,6 +65,142 @@ RenameStep CopyStep(const RenameStep& src)
     return out;
 }
 
+struct FilePlanItem : Moveable<FilePlanItem> {
+    String source_path;
+    String relative_path;
+    String source_name;
+    String target_name;
+    String target_path;
+    bool   is_dir = false;
+};
+
+Vector<String> SplitPatternsText(const String& text)
+{
+    Vector<String> out;
+    Vector<String> parts = Split(text, ';');
+    for(const String& raw : parts) {
+        String part = ToLower(TrimBoth(raw));
+        if(!part.IsEmpty())
+            out.Add(part);
+    }
+    return out;
+}
+
+bool MatchWildcardI2(const char* pattern, const char* text)
+{
+    while(*pattern) {
+        if(*pattern == '*') {
+            pattern++;
+            if(!*pattern)
+                return true;
+            while(*text) {
+                if(MatchWildcardI2(pattern, text))
+                    return true;
+                text++;
+            }
+            return false;
+        }
+        if(*pattern != '?' && ToLower((byte)*pattern) != ToLower((byte)*text))
+            return false;
+        if(!*text)
+            return false;
+        pattern++;
+        text++;
+    }
+    return *text == 0;
+}
+
+bool MatchesPatternSet(const Vector<String>& patterns, const String& text)
+{
+    if(patterns.IsEmpty())
+        return true;
+    String lower = ToLower(text);
+    for(const String& pattern : patterns)
+        if(MatchWildcardI2(pattern, lower))
+            return true;
+    return false;
+}
+
+String MakeRelativePath(const String& root, const String& full)
+{
+    String rel = full.Mid(root.GetCount());
+    if(rel.StartsWith("\\") || rel.StartsWith("/"))
+        rel = rel.Mid(1);
+    return rel;
+}
+
+void CollectTransferEntries(Vector<FilePlanItem>& out,
+                            const String& root,
+                            const String& current,
+                            int depth,
+                            const DirectoryScanSettings& settings,
+                            const Vector<String>& file_patterns,
+                            const Vector<String>& dir_patterns)
+{
+    FindFile ff(AppendFileName(current, "*"));
+    while(ff) {
+        String name = ff.GetName();
+        if(name == "." || name == "..") {
+            ff.Next();
+            continue;
+        }
+
+        bool is_dir = ff.IsFolder();
+        bool hidden = ff.IsHidden();
+        if(hidden && !settings.show_hidden) {
+            if(is_dir && settings.recursive && depth < settings.recursive_depth)
+                CollectTransferEntries(out, root, AppendFileName(current, name), depth + 1, settings, file_patterns, dir_patterns);
+            ff.Next();
+            continue;
+        }
+
+        bool pattern_match = is_dir ? MatchesPatternSet(dir_patterns, name) : MatchesPatternSet(file_patterns, name);
+        String full = AppendFileName(current, name);
+        String rel = MakeRelativePath(root, full);
+
+        if(pattern_match) {
+            FilePlanItem item;
+            item.source_path = full;
+            item.relative_path = rel;
+            item.source_name = name;
+            item.is_dir = is_dir;
+            if(is_dir && settings.include_directories)
+                out.Add(item);
+            if(!is_dir && settings.include_files)
+                out.Add(item);
+        }
+
+        if(is_dir && settings.recursive && depth < settings.recursive_depth)
+            CollectTransferEntries(out, root, full, depth + 1, settings, file_patterns, dir_patterns);
+
+        ff.Next();
+    }
+}
+
+String UniqueTargetPath(String path)
+{
+    if(!FileExists(path) && !DirectoryExists(path))
+        return path;
+    String dir = GetFileFolder(path);
+    String name = GetFileName(path);
+    String base = GetFileTitle(name);
+    String ext = GetFileExt(name);
+    for(int i = 1;; i++) {
+        String next = AppendFileName(dir, Format("%s-%d%s", base, i, ext));
+        if(!FileExists(next) && !DirectoryExists(next))
+            return next;
+    }
+}
+
+bool CopyFileVerified(const String& src, const String& dst, bool verify_hash)
+{
+    if(!FileCopy(src, dst))
+        return false;
+    if(!verify_hash)
+        return true;
+    return LoadFile(src) == LoadFile(dst);
+}
+
 }
 
 MainWindow::MainWindow()
@@ -124,7 +260,7 @@ void MainWindow::BuildUi()
                .SetMediaSide(UiAlign::LEFT)
                .SetMediaReserve(DPI(16));
     title_card_.ShowRule(false).ShowBottomLine(false).EnableHover(false).SetSelectable(false);
-    version_badge_.SetText("v2.5.5");
+    version_badge_.SetText("v0.12");
 
     source_label_.SetText("SOURCE DIRECTORY");
     source_edit_.SetPlaceholder("D:/projects/source");
@@ -280,6 +416,7 @@ void MainWindow::AddSidebarPages()
     rename.Add(rename_save_button_);
     rename.Add(rename_add_button_);
     rename.Add(rename_remove_button_);
+    rename.Add(rename_apply_button_);
     rename.Add(rename_steps_label_);
     rename.Add(rename_stack_panel_);
     rename_stack_panel_.Add(rename_stack_);
@@ -323,6 +460,8 @@ void MainWindow::AddSidebarPages()
     rename_add_button_.WhenAction << [=] { HandleRenameAdd(); };
     rename_remove_button_.SetText("Delete");
     rename_remove_button_.WhenAction << [=] { HandleRenameRemove(); };
+    rename_apply_button_.SetText("Apply Rename");
+    rename_apply_button_.WhenAction << [=] { HandleApplyRename(); };
     rename_steps_label_.SetText("STACK");
     rename_stack_.SetModel(rename_stack_model_);
     rename_stack_.SetSelectionMode(UILISTSEL_SINGLE);
@@ -347,6 +486,7 @@ void MainWindow::AddSidebarPages()
     transfer.Add(transfer_flatten_);
     transfer.Add(transfer_conflict_);
     transfer.Add(transfer_verify_hash_);
+    transfer.Add(transfer_apply_button_);
 
     transfer_target_label_.SetText("TARGET DIRECTORY");
     transfer_target_.SetPlaceholder("D:/backups/current");
@@ -359,6 +499,8 @@ void MainWindow::AddSidebarPages()
                      .Add("Skip Existing", 2)
                      .Select(0);
     transfer_verify_hash_.SetText("Verify MD5 Hashes").SetChecked(true);
+    transfer_apply_button_.SetText("Apply Transfer");
+    transfer_apply_button_.WhenAction << [=] { HandleApplyTransfer(); };
 }
 
 void MainWindow::ApplyTheme()
@@ -486,6 +628,8 @@ void MainWindow::ApplyTheme()
     generate_button_.SetStyle(MakeActionStyle(true));
     abort_button_.SetStyle(MakeActionStyle(false));
     rename_save_button_.SetStyle(MakeActionStyle(false));
+    rename_apply_button_.SetStyle(MakeActionStyle(true));
+    transfer_apply_button_.SetStyle(MakeActionStyle(true));
     exit_button_.SetStyle(MakeActionStyle(true));
     {
         UiButton::Style s = exit_button_.GetStyle();
@@ -642,10 +786,11 @@ void MainWindow::LayoutRenamePage()
     y += DPI(34);
     rename_param_c_.SetRect(m, y, w, DPI(28));
     y += DPI(34);
-    int bw = (w - DPI(16)) / 3;
+    int bw = (w - DPI(24)) / 4;
     rename_save_button_.SetRect(m, y, bw, DPI(28));
     rename_add_button_.SetRect(m + bw + DPI(8), y, bw, DPI(28));
     rename_remove_button_.SetRect(m + 2 * (bw + DPI(8)), y, bw, DPI(28));
+    rename_apply_button_.SetRect(m + 3 * (bw + DPI(8)), y, bw, DPI(28));
     y += DPI(40);
     rename_steps_label_.SetRect(m, y, w, DPI(14));
     y += DPI(18);
@@ -679,6 +824,8 @@ void MainWindow::LayoutTransferPage()
     transfer_conflict_.SetRect(m, y - DPI(2), w, DPI(28));
     y += DPI(36);
     transfer_verify_hash_.SetRect(m, y, w, DPI(18));
+    y += DPI(26);
+    transfer_apply_button_.SetRect(m, y, w, DPI(28));
 }
 
 void MainWindow::Paint(Draw& w)
@@ -778,6 +925,196 @@ void MainWindow::UpdateStatus(const String& text, bool busy)
 void MainWindow::UpdateFooterPath()
 {
     footer_path_.SetText(source_edit_.GetData().ToString());
+}
+
+void MainWindow::SetOutputReport(const String& text)
+{
+    output_edit_.SetData(text);
+}
+
+void MainWindow::HandleApplyRename()
+{
+    String dir = source_edit_.GetData().ToString();
+    if(dir.IsEmpty() || !DirectoryExists(dir)) {
+        PromptOK("Select a valid source directory first.");
+        return;
+    }
+
+    Vector<FilePlanItem> items;
+    Index<String> existing_names;
+    FindFile ff(AppendFileName(dir, "*"));
+    while(ff) {
+        String name = ff.GetName();
+        if(name != "." && name != "..") {
+            existing_names.FindAdd(name);
+            bool is_dir = ff.IsFolder();
+            bool hidden = ff.IsHidden();
+            if((!hidden || show_hidden_.IsChecked()) && ((is_dir && include_dirs_.IsChecked()) || (!is_dir && include_files_.IsChecked()))) {
+                FilePlanItem item;
+                item.source_path = AppendFileName(dir, name);
+                item.relative_path = name;
+                item.source_name = name;
+                item.is_dir = is_dir;
+                items.Add(item);
+            }
+        }
+        ff.Next();
+    }
+
+    if(items.IsEmpty()) {
+        PromptOK("No eligible files or directories found in the source directory.");
+        return;
+    }
+
+    Vector<String> names;
+    for(const FilePlanItem& item : items)
+        names.Add(item.source_name);
+    Vector<String> preview = RenameEngine::Preview(names, rename_steps_, existing_names);
+    int changed = 0;
+    for(int i = 0; i < items.GetCount(); i++) {
+        items[i].target_name = preview[i];
+        items[i].target_path = AppendFileName(dir, preview[i]);
+        if(items[i].source_name != items[i].target_name)
+            changed++;
+    }
+
+    if(changed == 0) {
+        PromptOK("Rename stack does not change any eligible entries.");
+        return;
+    }
+    if(!PromptYesNo(Format("Apply rename to %d entries in the source directory?", changed)))
+        return;
+
+    String report;
+    report << "Rename apply\n\n";
+    Vector<FilePlanItem> changed_items;
+    for(const FilePlanItem& item : items)
+        if(item.source_name != item.target_name)
+            changed_items.Add(item);
+
+    // Two-phase rename avoids collisions on swaps/cycles.
+    Vector<String> temp_paths;
+    bool ok = true;
+    for(int i = 0; i < changed_items.GetCount(); i++) {
+        String tmp = AppendFileName(dir, Format(".__dirlister_tmp_%lld_%d", (int64)GetTickCount(), i));
+        temp_paths.Add(tmp);
+        if(!FileMove(changed_items[i].source_path, tmp)) {
+            report << "FAILED TEMP: " << changed_items[i].source_name << "\n";
+            ok = false;
+            break;
+        }
+    }
+    if(ok) {
+        for(int i = 0; i < changed_items.GetCount(); i++) {
+            if(!FileMove(temp_paths[i], changed_items[i].target_path)) {
+                report << "FAILED APPLY: " << changed_items[i].source_name << " -> " << changed_items[i].target_name << "\n";
+                ok = false;
+            }
+            else
+                report << changed_items[i].source_name << " -> " << changed_items[i].target_name << "\n";
+        }
+    }
+    if(!ok)
+        report << "\nRename completed with errors.\n";
+    else
+        report << "\nRename completed successfully.\n";
+
+    SetOutputReport(report);
+    RefreshRenamePreview();
+    UpdateStatus(ok ? "READY" : "ERROR", false);
+}
+
+void MainWindow::HandleApplyTransfer()
+{
+    DirectoryScanSettings settings = ReadSettings();
+    String source = settings.source_directory;
+    String target_root = transfer_target_.GetData().ToString();
+    if(source.IsEmpty() || !DirectoryExists(source)) {
+        PromptOK("Select a valid source directory first.");
+        return;
+    }
+    if(target_root.IsEmpty()) {
+        PromptOK("Select a target directory for transfer first.");
+        return;
+    }
+    if(!DirectoryExists(target_root) && !RealizeDirectory(target_root)) {
+        PromptOK("Failed to create or access the target directory.");
+        return;
+    }
+
+    Vector<FilePlanItem> entries;
+    CollectTransferEntries(entries,
+                           source,
+                           source,
+                           0,
+                           settings,
+                           SplitPatternsText(settings.file_patterns),
+                           SplitPatternsText(settings.directory_patterns));
+    if(entries.IsEmpty()) {
+        PromptOK("No eligible entries found to transfer.");
+        return;
+    }
+
+    int conflict_mode = (int)transfer_conflict_.GetSelectedData();
+    String summary = Format("Transfer %d entries to:\n%s", entries.GetCount(), target_root);
+    if(!PromptYesNo(summary))
+        return;
+
+    String report;
+    report << "Transfer apply\n\n";
+    int copied = 0;
+    int skipped = 0;
+    int failed = 0;
+
+    for(const FilePlanItem& entry : entries) {
+        String relative = transfer_preserve_tree_.IsChecked() && !transfer_flatten_.IsChecked()
+                        ? entry.relative_path
+                        : entry.source_name;
+        String dest = AppendFileName(target_root, relative);
+
+        if(entry.is_dir) {
+            if(transfer_preserve_tree_.IsChecked()) {
+                if(RealizeDirectory(dest))
+                    report << "DIR  " << relative << "\n";
+                else {
+                    report << "FAIL DIR  " << relative << "\n";
+                    failed++;
+                }
+            }
+            continue;
+        }
+
+        RealizeDirectory(GetFileFolder(dest));
+        if(FileExists(dest)) {
+            if(conflict_mode == 2) {
+                report << "SKIP " << relative << " [exists]\n";
+                skipped++;
+                continue;
+            }
+            if(conflict_mode == 0)
+                dest = UniqueTargetPath(dest);
+            else if(conflict_mode == 1) {
+                if(!FileDelete(dest)) {
+                    report << "FAIL " << relative << " [failed to remove existing]\n";
+                    failed++;
+                    continue;
+                }
+            }
+        }
+
+        if(CopyFileVerified(entry.source_path, dest, transfer_verify_hash_.IsChecked())) {
+            report << "COPY " << relative << " -> " << MakeRelativePath(target_root, dest) << "\n";
+            copied++;
+        }
+        else {
+            report << "FAIL " << relative << "\n";
+            failed++;
+        }
+    }
+
+    report << Format("\nSummary: copied=%d skipped=%d failed=%d\n", copied, skipped, failed);
+    SetOutputReport(report);
+    UpdateStatus(failed ? "ERROR" : "READY", false);
 }
 
 void MainWindow::ResetRenameModel()
