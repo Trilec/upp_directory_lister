@@ -2,6 +2,8 @@
 
 DirLister is a U++ desktop tool for scanning a directory, filtering and sorting the result, previewing rename rules, and exporting the final listing as text, CSV, or JSON.
 
+![DirLister application snapshot](./DirLister_snapshot.jpg)
+
 ## Project Layout
 
 - `DirLister/main.cpp`: GUI entry point.
