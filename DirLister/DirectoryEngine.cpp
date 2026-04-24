@@ -308,9 +308,9 @@ void CollectEntries(Vector<ScanEntry>& out,
     }
 }
 
-String BuildTextOutput(const Vector<ScanEntry>& entries, const DirectoryScanSettings& settings)
+Vector<DirectoryOutputLine> BuildTextLines(const Vector<ScanEntry>& entries, const DirectoryScanSettings& settings)
 {
-    String out;
+    Vector<DirectoryOutputLine> out;
     for(const ScanEntry& entry : entries) {
         String line;
         line << String(' ', max(0, entry.depth) * 2);
@@ -332,10 +332,21 @@ String BuildTextOutput(const Vector<ScanEntry>& entries, const DirectoryScanSett
         if(settings.show_date && !IsNull(entry.modified))
             line << "  [" << DateString(entry.modified) << "]";
 
-        out << line << "\n";
+        DirectoryOutputLine& l = out.Add();
+        l.text = line;
+        l.is_dir = entry.is_dir;
     }
     if(out.IsEmpty())
-        out = "No matching entries.\n";
+        out.Add().text = "No matching entries.";
+    return out;
+}
+
+String BuildTextOutput(const Vector<ScanEntry>& entries, const DirectoryScanSettings& settings)
+{
+    String out;
+    Vector<DirectoryOutputLine> lines = BuildTextLines(entries, settings);
+    for(const DirectoryOutputLine& line : lines)
+        out << line.text << "\n";
     return out;
 }
 
@@ -404,6 +415,36 @@ String DirectoryEngine::Generate(const DirectoryScanSettings& settings)
     default:
         return BuildTextOutput(entries, normalized);
     }
+}
+
+Vector<DirectoryOutputLine> DirectoryEngine::GenerateTextLines(const DirectoryScanSettings& settings)
+{
+    DirectoryScanSettings normalized = NormalizeSettings(settings);
+    String source = TrimBoth(normalized.source_directory);
+    if(source.IsEmpty()) {
+        Vector<DirectoryOutputLine> out;
+        DirectoryOutputLine& line = out.Add();
+        line.text = "Source directory is empty.";
+        return out;
+    }
+    if(!DirectoryExists(source)) {
+        Vector<DirectoryOutputLine> out;
+        DirectoryOutputLine& line = out.Add();
+        line.text = Format("Source directory does not exist: %s", source);
+        return out;
+    }
+
+    Vector<ScanEntry> entries;
+    CollectEntries(entries,
+                   source,
+                   source,
+                   0,
+                   normalized,
+                   SplitPatterns(normalized.file_patterns, normalized.file_case_sensitive),
+                   SplitPatterns(normalized.directory_patterns, normalized.dir_case_sensitive));
+
+    Sort(entries, [&](const ScanEntry& a, const ScanEntry& b) { return CompareEntries(a, b, normalized) < 0; });
+    return BuildTextLines(entries, normalized);
 }
 
 }

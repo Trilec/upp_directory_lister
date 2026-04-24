@@ -23,6 +23,8 @@ public:
         Add(shell_);
         shell_.Add(title_);
         shell_.Add(doc_panel_);
+        shell_.Add(copy_button_);
+        shell_.Add(copy_label_);
         shell_.Add(close_);
         doc_panel_.Add(doc_);
 
@@ -36,80 +38,127 @@ public:
 
         close_.SetText("Close");
         close_.WhenAction << [=] { Close(); };
+        copy_button_.SetIcon(ICON_CONTENT_CONTENT_COPY_48()).SetIconSize(15, 15);
+        copy_button_.WhenAction << [=] { WriteClipboardText(doc_.GetData().ToString()); };
+        copy_label_.SetText("Copy");
 
-        doc_.SetText(
-            "DirLister is designed for three main jobs:\n\n"
-            "1. Setup / Listing\n"
-            "Use the Setup page to choose a source directory, apply filters, and generate a clean directory listing.\n"
-            "- File Pattern filters files by wildcard, for example: *.cpp;*.h;*.md\n"
-            "- Directory Pattern filters matching folders, for example: src*;docs*\n"
-            "- Size Threshold lets you include only files within a chosen size range\n"
-            "- Date Range filters files by modification date\n"
-            "- Sorting & Structure controls name/type/date/size ordering and directory placement\n"
-            "- Display Options control whether path, size, date, and extension are shown\n\n"
-            "Why it helps:\n"
-            "DirLister makes it easy to generate a copy/paste-ready inventory of a project tree, media folder, or archive.\n\n"
-            "Example:\n"
-            "Source: D:/projects/source\n"
-            "Pattern: *.cpp;*.h\n"
-            "Recursive: On, Depth: 2\n"
-            "Result: A formatted list of source files and folders ready for export or review.\n\n"
-            "2. Rename\n"
-            "The Rename page lets you build a stack of rename processes and preview the result before applying it.\n"
-            "Supported process types include:\n"
-            "- Search & Replace\n"
-            "- Case Transform\n"
-            "- Alphanumeric Only\n"
-            "- Numbering\n"
-            "- Prefix\n"
-            "- Extension Replace\n"
-            "- Insert Left / Insert Right\n\n"
-            "How to use it:\n"
-            "- Choose a process type\n"
-            "- Fill in the parameters\n"
-            "- Use Add to push it into the stack\n"
-            "- Drag rows in the stack to change order\n"
-            "- Enter a sample name in the preview input if needed\n"
-            "- Review the sample results from the current source directory\n"
-            "- Click Apply Rename to rename matching entries in the active source directory\n\n"
-            "Safety notes:\n"
-            "- Rename asks for confirmation before applying\n"
-            "- The app uses a two-phase rename pass to reduce collision problems\n"
-            "- Preview first if you are changing extensions or using numbering\n\n"
-            "Example:\n"
-            "Process stack:\n"
-            "1) Search & Replace: space -> _\n"
-            "2) Case: lower\n"
-            "3) Prefix: archived_\n"
-            "Result: My File.TXT becomes archived_my_file.txt\n\n"
-            "3. Transfer\n"
-            "The Transfer page copies files and folders from the active source directory to a target directory.\n"
-            "Options include:\n"
-            "- Preserve Tree: keep the folder structure\n"
-            "- Flatten Files: copy files into one destination level\n"
-            "- Verify MD5 Hashes: compare copied file content after transfer\n"
-            "- Conflict handling:\n"
-            "  Auto-Increment: creates a new name if the target exists\n"
-            "  Overwrite Existing: replaces the target file\n"
-            "  Skip Existing: leaves existing files unchanged\n\n"
-            "Example:\n"
-            "Source: D:/photos/2026\n"
-            "Target: E:/backup/photos\n"
-            "Preserve Tree: On\n"
-            "Conflict: Auto-Increment\n"
-            "Result: The folder tree is recreated in the backup target and name collisions are preserved safely.\n\n"
-            "Preview / Apply flow\n"
-            "- Generate List previews the directory contents in the main output area\n"
-            "- Rename preview shows how stacked operations will change names\n"
-            "- Apply Rename performs the actual rename after confirmation\n"
-            "- Apply Transfer performs the actual copy after confirmation\n"
-            "- Operation reports are written to the main output panel\n\n"
-            "Good practice\n"
-            "- Use shallow depth first when testing a new setup\n"
-            "- Preview rename stacks on a sample directory before applying broadly\n"
-            "- Use Skip Existing or Auto-Increment when copying into an existing archive\n"
-            "- Keep Linux Slashes enabled if you need copy/paste-friendly paths for tools or documentation\n"
-        );
+        doc_.EnableRich().SetSelectable().SetAlign(UiAlign::LEFT, UiAlign::TOP);
+        auto heading = [&](const String& text, Color ink = BlueText()) {
+            doc_.AddTextSpan(text, ink, true);
+            doc_.AddNewlineSpan();
+        };
+        auto body = [&](const String& text, Color ink = Text()) {
+            doc_.AddTextSpan(text, ink);
+            doc_.AddNewlineSpan();
+        };
+        auto gap = [&] { doc_.AddNewlineSpan(); };
+
+        heading("Overview");
+        body("DirLister helps you filter a folder, generate a clean listing, preview rename rules, and copy matching files to another location.");
+        body("The normal workflow is: choose a source directory, set file and directory filters, generate a listing, then optionally rename or transfer the filtered result.");
+        gap();
+
+        heading("How Filtering Works", BlueText());
+        body("Files and directories are filtered independently.");
+        body("- File Pattern only affects files");
+        body("- Directory Pattern only affects directories");
+        body("- You can include files, directories, or both");
+        body("- Rename and Transfer also use the active Filter settings");
+        gap();
+
+        heading("Pattern Modes", BlueText());
+        body("Both files and directories have their own matching mode.");
+        body("- Glob: wildcard matching such as *.cpp, src*, data_??.json", BlueText());
+        body("- Contains: simple substring matching such as log, temp, 2026", BlueText());
+        body("Examples:");
+        body("- File Glob: *.cpp matches C++ source files");
+        body("- File Contains: log matches any filename containing log");
+        body("- Directory Glob: DOC* matches folders starting with DOC");
+        body("- Directory Contains: art matches folders containing art anywhere in the name");
+        body("Case Sensitive can also be enabled separately for files and directories.");
+        gap();
+
+        heading("1. Filter / Listing");
+        body("Use the Filter page to choose a source directory, apply file and directory rules, and generate a clean listing.");
+        body("- File Pattern only filters files");
+        body("- Directory Pattern only filters directories");
+        body("- File Mode and Directory Mode support Glob and Contains matching");
+        body("- Case Sensitive can be set independently for files and directories");
+        body("- Size Threshold and Date Range can further narrow the result");
+        body("- Sorting & Structure controls ordering and how directories are grouped");
+        body("- Display Options control whether path, size, date, and extension are shown");
+        gap();
+
+        heading("Why It Is Helpful", GreenText());
+        body("DirLister makes it easy to produce a copy/paste-ready inventory of a project tree, media folder, backup source, or archive.");
+        gap();
+
+        heading("Example");
+        body("Source: D:/projects/source");
+        body("File Pattern: *.cpp;*.h");
+        body("Recursive: On, Depth: 2");
+        body("Result: a formatted list of source files and folders ready for export or review.");
+        gap();
+
+        heading("2. Rename", GreenText());
+        body("The Rename page lets you build a process stack and preview the result before applying it.");
+        body("Rename only works on entries allowed by the current Filter settings.");
+        body("Supported process types include Search & Replace, Case Transform, Alphanumeric Only, Numbering, Prefix, Extension Replace, Insert Left, and Insert Right.");
+        body("How to use it:");
+        body("- Choose a process type");
+        body("- Fill in the parameters");
+        body("- Use Add to push it into the stack");
+        body("- Drag rows in the stack to change order");
+        body("- Enter a sample name in the preview input if needed");
+        body("- Review the sample results from the current source directory");
+        body("- Click Apply Rename to rename matching entries in the active source directory");
+        gap();
+
+        heading("Safety Notes", AmberText());
+        body("- Rename asks for confirmation before applying");
+        body("- The app uses a two-phase rename pass to reduce collision problems");
+        body("- Preview first if you are changing extensions or using numbering");
+        gap();
+
+        heading("Rename Example");
+        body("Process stack:");
+        body("1) Search & Replace: space -> _");
+        body("2) Case: lower");
+        body("3) Prefix: archived_");
+        body("Result: My File.TXT becomes archived_my_file.txt");
+        gap();
+
+        heading("3. Transfer", AmberText());
+        body("The Transfer page copies files and folders from the active source directory to a target directory.");
+        body("Transfer also uses the current Filter settings, so only matching entries are copied.");
+        body("Options include Preserve Tree, Flatten Files, Verify MD5 Hashes, and conflict handling.");
+        body("Conflict handling:");
+        body("- Auto-Increment: creates a new name if the target exists");
+        body("- Overwrite Existing: replaces the target file");
+        body("- Skip Existing: leaves existing files unchanged");
+        gap();
+
+        heading("Transfer Example");
+        body("Source: D:/photos/2026");
+        body("Target: E:/backup/photos");
+        body("Preserve Tree: On");
+        body("Conflict: Auto-Increment");
+        body("Result: the folder tree is recreated in the backup target and name collisions are preserved safely.");
+        gap();
+
+        heading("Preview / Apply Flow");
+        body("- Generate List previews the directory contents in the main output area");
+        body("- Rename preview shows how stacked operations will change names");
+        body("- Apply Rename performs the actual rename after confirmation");
+        body("- Apply Transfer performs the actual copy after confirmation");
+        body("- Operation reports are written to the main output panel");
+        gap();
+
+        heading("Good Practice");
+        body("- Use shallow depth first when testing a new setup");
+        body("- Preview rename stacks on a sample directory before applying broadly");
+        body("- Use Skip Existing or Auto-Increment when copying into an existing archive");
+        body("- Keep Linux Slashes enabled if you need copy/paste-friendly paths for tools or documentation");
     }
 
     virtual void Layout() override
@@ -117,9 +166,11 @@ public:
         shell_.SetRect(GetSize());
         int m = DPI(14);
         title_.SetRect(m, m, GetSize().cx - m * 2, DPI(34));
+        copy_button_.SetRect(GetSize().cx - m - DPI(160), GetSize().cy - m - DPI(28), DPI(22), DPI(22));
+        copy_label_.SetRect(GetSize().cx - m - DPI(132), GetSize().cy - m - DPI(26), DPI(36), DPI(18));
         close_.SetRect(GetSize().cx - m - DPI(90), GetSize().cy - m - DPI(30), DPI(90), DPI(30));
         doc_panel_.SetRect(m, DPI(56), GetSize().cx - m * 2, GetSize().cy - DPI(112));
-        doc_.SetRect(DPI(1), DPI(1), doc_panel_.GetSize().cx - DPI(2), doc_panel_.GetSize().cy - DPI(2));
+        doc_.SetRect(DPI(10), DPI(10), doc_panel_.GetSize().cx - DPI(20), doc_panel_.GetSize().cy - DPI(20));
     }
 
     virtual void Paint(Draw& w) override
@@ -149,14 +200,47 @@ public:
         title_style.media_gap = DPI(8);
         title_.SetStyle(title_style);
 
+        {
+            UiLabel::Style s = MakeLabelStyle(Text(), UiLabelRole::Body, false);
+            for(int i = 0; i < 4; i++) {
+                s.palette.face[i] = UiFill::Solid(BodyBg());
+                s.palette.frame[i] = Null;
+                s.palette.ink[i] = Text();
+            }
+            s.align_h = UiAlign::LEFT;
+            s.align_v = UiAlign::TOP;
+            s.font = AppSans(10);
+            s.metrics.text_font = s.font;
+            s.metrics.use_text_font = true;
+            s.metrics.face_enabled = true;
+            s.metrics.frame_enabled = false;
+            s.metrics.content_margin = Rect(0, 0, 0, 0);
+            s.transparent = false;
+            doc_.SetStyle(s);
+        }
         close_.SetStyle(MakeActionStyle(false));
+        {
+            UiToolButton::Style s = MakeSmallButtonStyle();
+            for(int i = 0; i < 4; i++) {
+                s.palette.face[i] = UiFill::None();
+                s.palette.frame[i] = Null;
+                s.palette.ink[i] = Color(156, 163, 175);
+            }
+            s.metrics.face_enabled = false;
+            s.metrics.frame_enabled = false;
+            s.metrics.content_margin = Rect(0, 0, 0, 0);
+            copy_button_.SetStyle(s);
+        }
+        copy_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     }
 
 private:
     UiPanel shell_;
     UiTitleCard title_;
     UiPanel doc_panel_;
-    UiDoc doc_;
+    UiLabel doc_;
+    UiToolButton copy_button_;
+    UiLabel copy_label_;
     UiButton close_;
 };
 
@@ -583,10 +667,8 @@ void MainWindow::BuildUi()
     exit_button_.SetText("EXIT");
     exit_button_.SetIcon(ICON_NAVIGATION_EXIT_TO_APP_48()).SetIconSize(15, 15).SetContentGap(DPI(10));
     exit_button_.WhenAction << [=] { Close(); };
-    output_edit_.SetReadOnly();
-    StyleDocEdit(output_edit_, OutputText(), OutputBg(), MonospaceZ(11));
-    output_edit_.SetFrame(NullFrame());
-    output_edit_.SetData(String());
+    output_edit_.EnableRich().SetSelectable().SetAlign(UiAlign::LEFT, UiAlign::TOP);
+    output_edit_.SetText(String());
     footer_meta_.SetText("Choose a directory and generate a listing.    THREADS: 01    ENCODING: UTF-8");
     footer_path_.SetText(source_edit_.GetData().ToString());
 }
@@ -881,6 +963,24 @@ void MainWindow::ApplyTheme()
     footer_meta_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     footer_path_.SetStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
     state_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    {
+        UiLabel::Style s = MakeLabelStyle(OutputText(), UiLabelRole::Body, false);
+        for(int i = 0; i < 4; i++) {
+            s.palette.face[i] = UiFill::Solid(OutputBg());
+            s.palette.frame[i] = Null;
+            s.palette.ink[i] = OutputText();
+        }
+        s.align_h = UiAlign::LEFT;
+        s.align_v = UiAlign::TOP;
+        s.font = MonospaceZ(11);
+        s.metrics.text_font = s.font;
+        s.metrics.use_text_font = true;
+        s.metrics.face_enabled = true;
+        s.metrics.frame_enabled = false;
+        s.metrics.content_margin = Rect(0, 0, 0, 0);
+        s.transparent = false;
+        output_edit_.SetStyle(s);
+    }
 
     source_edit_.SetStyle(MakeEditStyle());
     setup_file_pattern_.SetStyle(MakeEditStyle());
@@ -1262,7 +1362,21 @@ DirectoryScanSettings MainWindow::ReadSettings() const
 void MainWindow::HandleGenerate()
 {
     UpdateStatus("RUNNING", true);
-    output_edit_.SetData(DirectoryEngine::Generate(ReadSettings()));
+    DirectoryScanSettings settings = ReadSettings();
+    if(settings.output_format == OutputFormat::Text) {
+        Vector<DirectoryOutputLine> lines = DirectoryEngine::GenerateTextLines(settings);
+        output_edit_.ClearSpans();
+        output_edit_.EnableRich().SetSelectable().SetAlign(UiAlign::LEFT, UiAlign::TOP);
+        for(int i = 0; i < lines.GetCount(); i++) {
+            output_edit_.AddTextSpan(lines[i].text, lines[i].is_dir ? AmberText() : OutputText());
+            if(i + 1 < lines.GetCount())
+                output_edit_.AddNewlineSpan();
+        }
+    }
+    else {
+        output_edit_.SetAlign(UiAlign::LEFT, UiAlign::TOP);
+        output_edit_.SetText(DirectoryEngine::Generate(settings));
+    }
     RefreshRenamePreview();
     UpdateStatus("READY", false);
 }
@@ -1292,7 +1406,7 @@ void MainWindow::UpdateFooterPath()
 
 void MainWindow::SetOutputReport(const String& text)
 {
-    output_edit_.SetData(text);
+    output_edit_.SetText(text);
 }
 
 bool MainWindow::HasActiveScanFilter() const

@@ -89,11 +89,17 @@ struct DirectoryScanSettings {
     bool show_extension = false;
 };
 
+struct DirectoryOutputLine : Moveable<DirectoryOutputLine> {
+    String text;
+    bool   is_dir = false;
+};
+
 // Stateless engine that scans a directory tree and renders the result.
 class DirectoryEngine {
 public:
     // Validates settings, collects entries, sorts them, and renders the chosen format.
     static String Generate(const DirectoryScanSettings& settings);
+    static Vector<DirectoryOutputLine> GenerateTextLines(const DirectoryScanSettings& settings);
 };
 
 }

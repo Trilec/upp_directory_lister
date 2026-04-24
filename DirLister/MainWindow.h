@@ -180,7 +180,7 @@ private:
     UiButton help_button_;
     UiButton exit_button_;
     UiLabel state_label_;
-    DocEdit output_edit_;
+    UiLabel output_edit_;
     UiLabel footer_meta_;
     UiLabel footer_path_;
 };
