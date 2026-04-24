@@ -315,5 +315,10 @@ void StyleEditField(EditField& edit, const char* null_text)
         edit.NullText(null_text, Muted());
 }
 
+void StyleDropDate(DropDate& edit)
+{
+    edit.SetBackground(BodyBg()).SetColor(White()).SetFont(AppSans(10));
+}
+
 }
 }

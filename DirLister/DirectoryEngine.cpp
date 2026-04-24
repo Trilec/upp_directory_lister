@@ -21,19 +21,19 @@ struct ScanEntry : Moveable<ScanEntry> {
     int    depth = 0;
 };
 
-Vector<String> SplitPatterns(const String& text)
+Vector<String> SplitPatterns(const String& text, bool case_sensitive)
 {
     Vector<String> out;
     Vector<String> parts = Split(text, ';');
     for(const String& raw : parts) {
         String part = TrimBoth(raw);
         if(!part.IsEmpty())
-            out.Add(ToLower(part));
+            out.Add(case_sensitive ? part : ToLower(part));
     }
     return out;
 }
 
-bool MatchWildcardI(const char* pattern, const char* text)
+bool MatchWildcardI(const char* pattern, const char* text, bool case_sensitive)
 {
     while(*pattern) {
         if(*pattern == '*') {
@@ -41,13 +41,19 @@ bool MatchWildcardI(const char* pattern, const char* text)
             if(!*pattern)
                 return true;
             while(*text) {
-                if(MatchWildcardI(pattern, text))
+                if(MatchWildcardI(pattern, text, case_sensitive))
                     return true;
                 text++;
             }
             return false;
         }
-        if(*pattern != '?' && ToLower((byte)*pattern) != ToLower((byte)*text))
+        int pc = (byte)*pattern;
+        int tc = (byte)*text;
+        if(!case_sensitive) {
+            pc = ToLower(pc);
+            tc = ToLower(tc);
+        }
+        if(*pattern != '?' && pc != tc)
             return false;
         if(!*text)
             return false;
@@ -57,15 +63,50 @@ bool MatchWildcardI(const char* pattern, const char* text)
     return *text == 0;
 }
 
-bool MatchesAnyPattern(const Vector<String>& patterns, const String& text)
+bool MatchesAnyPattern(const Vector<String>& patterns, const String& text, bool case_sensitive)
 {
     if(patterns.IsEmpty())
         return true;
-    String lower = ToLower(text);
+    String lower = case_sensitive ? text : ToLower(text);
     for(const String& pattern : patterns)
-        if(MatchWildcardI(pattern, lower))
+        if(MatchWildcardI(pattern, lower, case_sensitive))
             return true;
     return false;
+}
+
+bool MatchesAnyContains(const Vector<String>& patterns, const String& text, bool case_sensitive)
+{
+    if(patterns.IsEmpty())
+        return true;
+    String candidate = case_sensitive ? text : ToLower(text);
+    for(const String& pattern : patterns)
+        if(candidate.Find(pattern) >= 0)
+            return true;
+    return false;
+}
+
+bool MatchesConfiguredPattern(const Vector<String>& patterns,
+                             const String& text,
+                             bool case_sensitive,
+                             PatternMode mode)
+{
+    if(mode == PatternMode::Contains)
+        return MatchesAnyContains(patterns, text, case_sensitive);
+    return MatchesAnyPattern(patterns, text, case_sensitive);
+}
+
+bool TypePatternMatch(bool is_dir,
+                      const Vector<String>& file_patterns,
+                      const Vector<String>& dir_patterns,
+                      const String& text,
+                      bool file_case_sensitive,
+                      bool dir_case_sensitive,
+                      PatternMode file_mode,
+                      PatternMode dir_mode)
+{
+    if(is_dir)
+        return dir_patterns.IsEmpty() || MatchesConfiguredPattern(dir_patterns, text, dir_case_sensitive, dir_mode);
+    return file_patterns.IsEmpty() || MatchesConfiguredPattern(file_patterns, text, file_case_sensitive, file_mode);
 }
 
 String NormalizeSlashes(String path, SlashMode mode)
@@ -244,9 +285,14 @@ void CollectEntries(Vector<ScanEntry>& out,
         entry.modified = ff.GetLastWriteTime();
         entry.depth = depth;
 
-        bool pattern_match = entry.is_dir
-            ? MatchesAnyPattern(dir_patterns, entry.name)
-            : MatchesAnyPattern(file_patterns, entry.name);
+        bool pattern_match = TypePatternMatch(entry.is_dir,
+                                              file_patterns,
+                                              dir_patterns,
+                                              entry.name,
+                                              settings.file_case_sensitive,
+                                              settings.dir_case_sensitive,
+                                              settings.file_pattern_mode,
+                                              settings.dir_pattern_mode);
 
         if((!entry.hidden || settings.show_hidden) && pattern_match && PassDateFilter(entry, settings) && PassSizeFilter(entry, settings)) {
             if(entry.is_dir && settings.include_directories)
@@ -344,8 +390,8 @@ String DirectoryEngine::Generate(const DirectoryScanSettings& settings)
                    source,
                    0,
                    normalized,
-                   SplitPatterns(normalized.file_patterns),
-                   SplitPatterns(normalized.directory_patterns));
+                   SplitPatterns(normalized.file_patterns, normalized.file_case_sensitive),
+                   SplitPatterns(normalized.directory_patterns, normalized.dir_case_sensitive));
 
     Sort(entries, [&](const ScanEntry& a, const ScanEntry& b) { return CompareEntries(a, b, normalized) < 0; });
 

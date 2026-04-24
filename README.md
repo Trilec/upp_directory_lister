@@ -1,72 +1,143 @@
 # DirLister
 
-DirLister is a U++ desktop tool for scanning a directory, filtering and sorting the result, applying batch rename rules, transferring/copying matching files, and exporting the final listing as text, CSV, or JSON.
+DirLister is a desktop tool for exploring a directory, filtering what you see, generating clean listings, previewing batch rename rules, and copying matching files to another location.
+
+It is built with U++ and the newer `upp_Ui` controls.
 
 ![DirLister application snapshot](./DirLister_snapshot.jpg)
 
-## Project Layout
+## What DirLister Is Useful For
 
-- `DirLister/main.cpp`: GUI entry point.
-- `DirLister/MainWindow.*`: window composition, layout, and event wiring.
-- `DirLister/DirectoryEngine.*`: directory scan, filtering, sorting, and output rendering.
-- `DirLister/RenameEngine.*`: rename-step defaults, preview pipeline, and rename execution helpers.
-- `DirLister/DirListerTheme.*`: shared visual styling helpers.
+- creating a clean file or folder inventory for a project or archive
+- listing only the files you care about, using patterns and filters
+- previewing rename rules before applying them
+- copying matching files into a backup, export, or staging directory
+- producing output that is easy to read or paste into notes, tickets, or documentation
 
-## Current Features
+## Main Features
 
-- Setup page for source directory, filters, sorting, recursive depth, and output formatting.
-- Generate listing to the main output panel in `Text`, `CSV`, or `JSON`.
-- Rename page with process stack, live preview, and real apply from the active source directory.
-- Transfer page with real copy/transfer execution to a target directory.
-- Conflict handling for transfer:
-  - `Auto-Increment`
-  - `Overwrite Existing`
-  - `Skip Existing`
-- In-app Help button and help dialog describing workflows and examples.
+- source directory selection
+- file and directory pattern filtering
+- pattern modes: `Glob` and `Contains`
+- recursive scanning with depth control
+- size and date filtering
+- flexible sorting and directory placement
+- text, CSV, and JSON output
+- rename process stack with live preview
+- transfer/copy workflow with conflict handling
+- built-in Help dialog with examples and usage notes
 
-## How To Use
+## Quick Start
 
-### Generate a Listing
+1. Choose a `Source Directory`.
+2. Open `Scan Filter` and set any file patterns, directory patterns, or filters you want.
+3. Click `Generate List` to preview the current result.
+4. If needed, switch to `Rename` or `Transfer` to work on the filtered set.
 
-1. Set the `Source Directory`.
-2. Optionally add file and directory patterns such as `*.cpp;*.h` or `src*;docs*`.
-3. Adjust sorting, recursive depth, date/size filters, and display options.
-4. Choose `Text Output`, `CSV Output`, or `JSON Output`.
-5. Click `Generate List`.
+## Scan Filter
 
-### Apply Rename Rules
+The `Scan Filter` page controls what the app looks at.
 
-1. Open the `Rename` page.
-2. Choose a process type such as `Search & Replace`, `Case`, `Prefix`, or `Numbering`.
-3. Fill in the process parameters.
-4. Click `Add` to push the process into the stack.
-5. Reorder the stack by dragging rows.
-6. Review the preview panel.
-7. Click `Apply Rename` and confirm.
+You can use it to:
+
+- limit which files are included with file patterns such as `*.cpp;*.h;*.md`
+- limit which folders are included with directory patterns such as `src*;docs*`
+- choose whether matching is `Glob` based or simple `Contains` text matching
+- optionally enable `Case Sensitive` matching
+- restrict results by size or modification date
+- control recursive scanning depth
+- change sort order and how directories are grouped
+- choose which fields appear in the output
+
+The main point of this page is that it defines the working set for the rest of the tool.
+
+## Generate a Listing
+
+Use `Generate List` when you want a readable or exportable view of the current scan result.
+
+Available output modes:
+
+- `Text Output`: easy to read and easy to paste elsewhere
+- `CSV Output`: useful for spreadsheets or post-processing
+- `JSON Output`: useful for tooling or structured export
+
+If you enable path, size, date, or extension display, those values are added to each line of the generated result.
+
+## Rename
+
+The `Rename` page lets you build a stack of rename processes and preview the result before applying it.
+
+Supported process types include:
+
+- Search & Replace
+- Case Transform
+- Alphanumeric Only
+- Numbering
+- Prefix
+- Extension Replace
+- Insert Left
+- Insert Right
+
+Typical workflow:
+
+1. Choose a process.
+2. Fill in its parameters.
+3. Click `Add` to place it into the stack.
+4. Reorder the stack by dragging rows.
+5. Review the preview.
+6. Click `Apply Rename` when you are satisfied.
 
 Notes:
-- Rename currently applies to eligible entries in the active source directory.
-- Preview should be checked before applying extension or numbering rules.
 
-### Transfer / Copy Files
+- the rename preview uses entries from the active source directory
+- rename applies to eligible entries in that source directory
+- it is best to preview carefully before applying extension or numbering rules
 
-1. Open the `Transfer` page.
-2. Choose the target directory.
-3. Choose whether to preserve tree structure or flatten the files.
-4. Select a conflict policy:
-   - `Auto-Increment`
-   - `Overwrite Existing`
-   - `Skip Existing`
-5. Optionally enable verification.
-6. Click `Apply Transfer` and confirm.
+## Transfer
+
+The `Transfer` page copies matching files and folders into a target directory.
+
+Options include:
+
+- preserve the original folder tree
+- flatten files into a single destination level
+- verify copied files after transfer
+- choose how file conflicts are handled
+
+Conflict handling modes:
+
+- `Auto-Increment`: creates a new target name when a file already exists
+- `Overwrite Existing`: replaces the existing target file
+- `Skip Existing`: leaves existing target files untouched
+
+Typical workflow:
+
+1. Choose the target directory.
+2. Decide whether to preserve the tree or flatten the files.
+3. Choose the conflict policy.
+4. Click `Apply Transfer` and confirm.
 
 ## Help
 
-- Use the top-bar `Help` button for an in-app guide covering setup, rename, transfer, and examples.
+Use the top-bar `Help` button for an in-app guide covering:
 
-## Build Notes
+- listing generation
+- rename workflow
+- transfer workflow
+- preview and apply flow
+- practical examples
 
-The package file is `DirLister/DirLister.upp`.
+## Notes
+
+- `Linux Slashes` changes the visible path style for easier copy/paste into tools and docs.
+- `Generate List` is safe and preview-oriented.
+- `Apply Rename` and `Apply Transfer` perform real filesystem operations and ask for confirmation first.
+
+## Build
+
+Package file:
+
+- `DirLister/DirLister.upp`
 
 Required U++ packages:
 
@@ -75,10 +146,3 @@ Required U++ packages:
 - `CtrlCore`
 - `CtrlLib`
 - `Ui`
-
-## Maintenance Notes
-
-- Keep behavior in `MainWindow` and the engines, and keep appearance in `DirListerTheme`.
-- Prefer small fixes over new helper layers unless logic is clearly reused.
-- When adding exports, validate escaping and formatting for untrusted file names and paths.
-- Prefer Ui-native controls where available; this repo is also exercising the `upp_Ui` control API.

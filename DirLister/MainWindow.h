@@ -68,6 +68,8 @@ private:
     Vector<String> CollectRenameSamples(Index<String>& existing_names) const;
     void SyncRenameSaveState();
     void SetOutputReport(const String& text);
+    void UpdateFilterIndicator();
+    bool HasActiveScanFilter() const;
 
 private:
     // Window shell and persistent navigation controls.
@@ -85,6 +87,7 @@ private:
     UiButton nav_setup_button_;
     UiButton nav_rename_button_;
     UiButton nav_transfer_button_;
+    UiLabel scan_filter_badge_;
     int active_page_ = 0;
 
     // Page containers hosted inside the left sidebar.
@@ -94,7 +97,14 @@ private:
 
     // Setup page controls.
     UiLabel setup_file_pattern_label_;
+    UiLabel setup_filter_hint_;
+    UiLabel file_pattern_mode_label_;
+    UiDropdown file_pattern_mode_;
+    UiCheckBox file_case_sensitive_;
     UiLineEdit setup_file_pattern_;
+    UiLabel dir_pattern_mode_label_;
+    UiDropdown dir_pattern_mode_;
+    UiCheckBox dir_case_sensitive_;
     UiLineEdit setup_dir_pattern_;
     UiLabel size_threshold_label_;
     UiCheckBox size_filter_toggle_;
@@ -132,6 +142,7 @@ private:
     UiToolButton rename_add_button_;
     UiToolButton rename_remove_button_;
     UiButton rename_apply_button_;
+    UiLabel rename_filter_hint_;
     UiLabel rename_params_label_;
     UiDropdown rename_mode_;
     UiLineEdit rename_param_a_;
@@ -160,6 +171,7 @@ private:
     UiCheckBox transfer_flatten_;
     UiDropdown transfer_conflict_;
     UiCheckBox transfer_verify_hash_;
+    UiLabel transfer_filter_hint_;
     UiButton transfer_apply_button_;
 
     // Output panel and footer.

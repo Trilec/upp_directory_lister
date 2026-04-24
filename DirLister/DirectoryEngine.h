@@ -46,11 +46,20 @@ enum class SizeUnit : byte {
     Gigabytes,
 };
 
+enum class PatternMode : byte {
+    Glob,
+    Contains,
+};
+
 // Aggregates all user-selected scan, filtering, sorting, and rendering options.
 struct DirectoryScanSettings {
     String source_directory;
     String file_patterns;
     String directory_patterns;
+    bool   file_case_sensitive = false;
+    bool   dir_case_sensitive = false;
+    PatternMode file_pattern_mode = PatternMode::Glob;
+    PatternMode dir_pattern_mode = PatternMode::Glob;
 
     bool recursive = true;
     int  recursive_depth = 2;

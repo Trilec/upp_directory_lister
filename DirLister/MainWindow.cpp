@@ -224,19 +224,19 @@ struct FilePlanItem : Moveable<FilePlanItem> {
     bool   is_dir = false;
 };
 
-Vector<String> SplitPatternsText(const String& text)
+Vector<String> SplitPatternsText(const String& text, bool case_sensitive)
 {
     Vector<String> out;
     Vector<String> parts = Split(text, ';');
     for(const String& raw : parts) {
-        String part = ToLower(TrimBoth(raw));
+        String part = TrimBoth(raw);
         if(!part.IsEmpty())
-            out.Add(part);
+            out.Add(case_sensitive ? part : ToLower(part));
     }
     return out;
 }
 
-bool MatchWildcardI2(const char* pattern, const char* text)
+bool MatchWildcardI2(const char* pattern, const char* text, bool case_sensitive)
 {
     while(*pattern) {
         if(*pattern == '*') {
@@ -244,13 +244,19 @@ bool MatchWildcardI2(const char* pattern, const char* text)
             if(!*pattern)
                 return true;
             while(*text) {
-                if(MatchWildcardI2(pattern, text))
+                if(MatchWildcardI2(pattern, text, case_sensitive))
                     return true;
                 text++;
             }
             return false;
         }
-        if(*pattern != '?' && ToLower((byte)*pattern) != ToLower((byte)*text))
+        int pc = (byte)*pattern;
+        int tc = (byte)*text;
+        if(!case_sensitive) {
+            pc = ToLower(pc);
+            tc = ToLower(tc);
+        }
+        if(*pattern != '?' && pc != tc)
             return false;
         if(!*text)
             return false;
@@ -260,15 +266,50 @@ bool MatchWildcardI2(const char* pattern, const char* text)
     return *text == 0;
 }
 
-bool MatchesPatternSet(const Vector<String>& patterns, const String& text)
+bool MatchesPatternSet(const Vector<String>& patterns, const String& text, bool case_sensitive)
 {
     if(patterns.IsEmpty())
         return true;
-    String lower = ToLower(text);
+    String candidate = case_sensitive ? text : ToLower(text);
     for(const String& pattern : patterns)
-        if(MatchWildcardI2(pattern, lower))
+        if(MatchWildcardI2(pattern, candidate, case_sensitive))
             return true;
     return false;
+}
+
+bool MatchesContainsSet(const Vector<String>& patterns, const String& text, bool case_sensitive)
+{
+    if(patterns.IsEmpty())
+        return true;
+    String candidate = case_sensitive ? text : ToLower(text);
+    for(const String& pattern : patterns)
+        if(candidate.Find(pattern) >= 0)
+            return true;
+    return false;
+}
+
+bool MatchesConfiguredSet(const Vector<String>& patterns,
+                         const String& text,
+                         bool case_sensitive,
+                         PatternMode mode)
+{
+    if(mode == PatternMode::Contains)
+        return MatchesContainsSet(patterns, text, case_sensitive);
+    return MatchesPatternSet(patterns, text, case_sensitive);
+}
+
+bool TypePatternMatch2(bool is_dir,
+                       const Vector<String>& file_patterns,
+                       const Vector<String>& dir_patterns,
+                       const String& text,
+                       bool file_case_sensitive,
+                       bool dir_case_sensitive,
+                       PatternMode file_mode,
+                       PatternMode dir_mode)
+{
+    if(is_dir)
+        return dir_patterns.IsEmpty() || MatchesConfiguredSet(dir_patterns, text, dir_case_sensitive, dir_mode);
+    return file_patterns.IsEmpty() || MatchesConfiguredSet(file_patterns, text, file_case_sensitive, file_mode);
 }
 
 String MakeRelativePath(const String& root, const String& full)
@@ -304,7 +345,14 @@ void CollectTransferEntries(Vector<FilePlanItem>& out,
             continue;
         }
 
-        bool pattern_match = is_dir ? MatchesPatternSet(dir_patterns, name) : MatchesPatternSet(file_patterns, name);
+        bool pattern_match = TypePatternMatch2(is_dir,
+                                              file_patterns,
+                                              dir_patterns,
+                                              name,
+                                              settings.file_case_sensitive,
+                                              settings.dir_case_sensitive,
+                                              settings.file_pattern_mode,
+                                              settings.dir_pattern_mode);
         String full = AppendFileName(current, name);
         String rel = MakeRelativePath(root, full);
 
@@ -322,6 +370,70 @@ void CollectTransferEntries(Vector<FilePlanItem>& out,
 
         if(is_dir && settings.recursive && depth < settings.recursive_depth)
             CollectTransferEntries(out, root, full, depth + 1, settings, file_patterns, dir_patterns);
+
+        ff.Next();
+    }
+}
+
+void CollectRenameEntries(Vector<FilePlanItem>& out,
+                         const String& root,
+                         const String& current,
+                         int depth,
+                         const DirectoryScanSettings& settings,
+                         const Vector<String>& file_patterns,
+                         const Vector<String>& dir_patterns)
+{
+    FindFile ff(AppendFileName(current, "*"));
+    while(ff) {
+        String name = ff.GetName();
+        if(name == "." || name == "..") {
+            ff.Next();
+            continue;
+        }
+
+        bool is_dir = ff.IsFolder();
+        bool hidden = ff.IsHidden();
+        String full = AppendFileName(current, name);
+        FilePlanItem item;
+        item.source_path = full;
+        item.relative_path = MakeRelativePath(root, full);
+        item.source_name = name;
+        item.is_dir = is_dir;
+
+        bool pattern_match = TypePatternMatch2(is_dir,
+                                              file_patterns,
+                                              dir_patterns,
+                                              name,
+                                              settings.file_case_sensitive,
+                                              settings.dir_case_sensitive,
+                                              settings.file_pattern_mode,
+                                              settings.dir_pattern_mode);
+        bool include_type = (is_dir && settings.include_directories) || (!is_dir && settings.include_files);
+        bool pass_size = true;
+        bool pass_date = true;
+        if(settings.enable_size_filter && !is_dir) {
+            double scale = settings.size_unit == SizeUnit::Bytes ? 1.0
+                         : settings.size_unit == SizeUnit::Kilobytes ? 1024.0
+                         : settings.size_unit == SizeUnit::Megabytes ? 1024.0 * 1024.0
+                         : 1024.0 * 1024.0 * 1024.0;
+            int64 len = ff.GetLength();
+            if(settings.min_size > 0 && (double)len < settings.min_size * scale) pass_size = false;
+            if(settings.max_size > 0 && (double)len > settings.max_size * scale) pass_size = false;
+        }
+        if(settings.enable_date_filter) {
+            Time tm = ff.GetLastWriteTime();
+            if(!IsNull(tm)) {
+                Date d(tm.year, tm.month, tm.day);
+                if(!IsNull(settings.modified_from) && d < settings.modified_from) pass_date = false;
+                if(!IsNull(settings.modified_to) && d > settings.modified_to) pass_date = false;
+            }
+        }
+
+        if((!hidden || settings.show_hidden) && include_type && pattern_match && pass_size && pass_date)
+            out.Add(item);
+
+        if(is_dir && settings.recursive && depth < settings.recursive_depth)
+            CollectRenameEntries(out, root, full, depth + 1, settings, file_patterns, dir_patterns);
 
         ff.Next();
     }
@@ -388,6 +500,7 @@ void MainWindow::BuildUi()
     nav_panel_.Add(nav_setup_button_);
     nav_panel_.Add(nav_rename_button_);
     nav_panel_.Add(nav_transfer_button_);
+    nav_panel_.Add(scan_filter_badge_);
     sidebar_panel_.Add(setup_page_);
     sidebar_panel_.Add(rename_page_);
     sidebar_panel_.Add(transfer_page_);
@@ -435,8 +548,12 @@ void MainWindow::BuildUi()
         UpdateFooterPath();
         RefreshRenamePreview();
     };
+    auto filter_changed = [=] {
+        UpdateFilterIndicator();
+        RefreshRenamePreview();
+    };
 
-    nav_setup_button_.SetText("SETUP");
+    nav_setup_button_.SetText("FILTER");
     nav_rename_button_.SetText("RENAME");
     nav_transfer_button_.SetText("TRANSFER");
     nav_setup_button_.WhenAction << [=] { SetSidebarPage(0); };
@@ -476,9 +593,21 @@ void MainWindow::BuildUi()
 
 void MainWindow::AddSidebarPages()
 {
+    auto filter_changed = [=] {
+        UpdateFilterIndicator();
+        RefreshRenamePreview();
+    };
+
     ParentCtrl& setup = setup_page_;
     setup.Add(setup_file_pattern_label_);
+    setup.Add(setup_filter_hint_);
+    setup.Add(file_pattern_mode_label_);
+    setup.Add(file_pattern_mode_);
+    setup.Add(file_case_sensitive_);
     setup.Add(setup_file_pattern_);
+    setup.Add(dir_pattern_mode_label_);
+    setup.Add(dir_pattern_mode_);
+    setup.Add(dir_case_sensitive_);
     setup.Add(setup_dir_pattern_);
     setup.Add(size_threshold_label_);
     setup.Add(size_filter_toggle_);
@@ -506,26 +635,50 @@ void MainWindow::AddSidebarPages()
     setup.Add(show_date_);
     setup.Add(show_extension_);
 
-    setup_file_pattern_label_.SetText("SCAN FILTER AND DIRECTORY RULES");
+    setup_file_pattern_label_.SetText("FILTER RULES");
+    setup_filter_hint_.SetText("File Pattern only filters files. Directory Pattern only filters directories.");
+    file_pattern_mode_label_.SetText("File Mode");
+    file_pattern_mode_.Add("Glob", (int)PatternMode::Glob)
+                      .Add("Contains", (int)PatternMode::Contains)
+                      .Select(0);
+    file_pattern_mode_.WhenSelect << [=](int) { filter_changed(); };
+    file_case_sensitive_.SetText("Case Sensitive");
+    file_case_sensitive_.WhenAction << [=] { filter_changed(); };
     setup_file_pattern_.SetPlaceholder("File Pattern (e.g. *.cpp;*.h)");
+    setup_file_pattern_.WhenChange << [=] { filter_changed(); };
+    dir_pattern_mode_label_.SetText("Directory Mode");
+    dir_pattern_mode_.Add("Glob", (int)PatternMode::Glob)
+                     .Add("Contains", (int)PatternMode::Contains)
+                     .Select(0);
+    dir_pattern_mode_.WhenSelect << [=](int) { filter_changed(); };
+    dir_case_sensitive_.SetText("Case Sensitive");
+    dir_case_sensitive_.WhenAction << [=] { filter_changed(); };
     setup_dir_pattern_.SetPlaceholder("Directory Pattern (e.g. src;bin)");
+    setup_dir_pattern_.WhenChange << [=] { filter_changed(); };
 
     size_threshold_label_.SetText("SIZE THRESHOLD");
     size_filter_toggle_.SetText("Enable").SetChecked(false);
+    size_filter_toggle_.WhenAction << [=] { filter_changed(); };
     StyleEditField(size_min_, "Min");
     StyleEditField(size_max_, "Max");
     size_min_.SetData(0);
     size_max_.SetData(0);
+    size_min_.WhenAction << [=] { filter_changed(); };
+    size_max_.WhenAction << [=] { filter_changed(); };
     size_unit_.Add("B", (int)SizeUnit::Bytes)
               .Add("KB", (int)SizeUnit::Kilobytes)
               .Add("MB", (int)SizeUnit::Megabytes)
               .Add("GB", (int)SizeUnit::Gigabytes)
               .Select(1);
+    size_unit_.WhenSelect << [=](int) { filter_changed(); };
 
     date_range_label_.SetText("DATE RANGE");
     date_filter_toggle_.SetText("Enable").SetChecked(false);
+    date_filter_toggle_.WhenAction << [=] { filter_changed(); };
     date_from_.SetBackground(BodyBg()).SetColor(White()).SetFont(AppSans(10));
     date_to_.SetBackground(BodyBg()).SetColor(White()).SetFont(AppSans(10));
+    date_from_.WhenAction << [=] { filter_changed(); };
+    date_to_.WhenAction << [=] { filter_changed(); };
 
     sort_label_.SetText("SORTING & STRUCTURE");
     sort_primary_.Add("Primary: Name", (int)DirSortKey::Name)
@@ -544,23 +697,34 @@ void MainWindow::AddSidebarPages()
                   .Add("Dirs Last", (int)DirPlacement::DirsLast)
                   .Add("Inline", (int)DirPlacement::Inline)
                   .Select(0);
+    sort_primary_.WhenSelect << [=](int) { filter_changed(); };
+    sort_secondary_.WhenSelect << [=](int) { filter_changed(); };
+    dir_placement_.WhenSelect << [=](int) { filter_changed(); };
     reverse_sort_.SetText("Reverse");
+    reverse_sort_.WhenAction << [=] { filter_changed(); };
     recursive_scan_.SetText("Recursive Scanning").SetChecked(true);
+    recursive_scan_.WhenAction << [=] { filter_changed(); };
     depth_label_.SetText("Depth");
     StyleEditField(depth_limit_);
     depth_limit_.SetData(2);
+    depth_limit_.WhenAction << [=] { filter_changed(); };
     include_dirs_.SetText("Include Dirs").SetChecked(true);
+    include_dirs_.WhenAction << [=] { filter_changed(); };
     include_files_.SetText("Include Files").SetChecked(true);
+    include_files_.WhenAction << [=] { filter_changed(); };
     show_hidden_.SetText("Show Hidden");
+    show_hidden_.WhenAction << [=] { filter_changed(); };
 
     display_label_.SetText("DISPLAY OPTIONS");
     show_path_.SetText("Path").SetChecked(true);
     show_size_.SetText("Size").SetChecked(true);
     show_date_.SetText("Date").SetChecked(true);
     show_extension_.SetText("Ext");
+    scan_filter_badge_.SetText("ON");
 
     ParentCtrl& rename = rename_page_;
     rename.Add(rename_operator_label_);
+    rename.Add(rename_filter_hint_);
     rename.Add(rename_add_type_);
     rename.Add(rename_params_label_);
     rename.Add(rename_mode_);
@@ -581,6 +745,7 @@ void MainWindow::AddSidebarPages()
     rename_preview_panel_.Add(rename_preview_view_);
 
     rename_operator_label_.SetText("PROCESS");
+    rename_filter_hint_.SetText("Active Scan Filter rules limit which entries are previewed and renamed.");
     rename_add_type_.Add("Search & Replace", (int)RenameStepType::FindReplace)
                     .Add("Case Transform", (int)RenameStepType::Case)
                     .Add("Alphanumeric Only", (int)RenameStepType::Alnum)
@@ -640,6 +805,7 @@ void MainWindow::AddSidebarPages()
     transfer.Add(transfer_flatten_);
     transfer.Add(transfer_conflict_);
     transfer.Add(transfer_verify_hash_);
+    transfer.Add(transfer_filter_hint_);
     transfer.Add(transfer_apply_button_);
 
     transfer_target_label_.SetText("TARGET DIRECTORY");
@@ -653,6 +819,7 @@ void MainWindow::AddSidebarPages()
                      .Add("Skip Existing", 2)
                      .Select(0);
     transfer_verify_hash_.SetText("Verify MD5 Hashes").SetChecked(true);
+    transfer_filter_hint_.SetText("Active Scan Filter rules limit which entries are transferred.");
     transfer_apply_button_.SetText("Apply Transfer");
     transfer_apply_button_.WhenAction << [=] { HandleApplyTransfer(); };
 }
@@ -692,19 +859,25 @@ void MainWindow::ApplyTheme()
     title_style.show_bottom_line = false;
     title_card_.SetStyle(title_style);
     version_badge_.SetStyle(MakeBadgeStyle(BlueDark(), StatusText()));
+    scan_filter_badge_.SetStyle(MakeBadgeStyle(GreenDark(), GreenText()));
 
     source_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     setup_file_pattern_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    setup_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    file_pattern_mode_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    dir_pattern_mode_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     size_threshold_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     date_range_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     sort_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     depth_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     display_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     rename_operator_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
+    rename_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     rename_params_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
     rename_steps_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
     rename_preview_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
     transfer_target_label_.SetStyle(MakeLabelStyle(AmberText(), UiLabelRole::Caption));
+    transfer_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     footer_meta_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     footer_path_.SetStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
     state_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
@@ -746,6 +919,8 @@ void MainWindow::ApplyTheme()
     rename_stack_.SetStyle(list_style);
 
     source_history_.SetStyle(MakeDropdownStyle());
+    file_pattern_mode_.SetStyle(MakeDropdownStyle());
+    dir_pattern_mode_.SetStyle(MakeDropdownStyle());
     output_format_.SetStyle(MakeDropdownStyle());
     slash_mode_.SetStyle(MakeDropdownStyle());
     size_unit_.SetStyle(MakeDropdownStyle());
@@ -758,6 +933,8 @@ void MainWindow::ApplyTheme()
 
     UiCheckBox::Style check_style = MakeCheckStyle();
     size_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
+    file_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
+    dir_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
     date_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
     reverse_sort_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
     recursive_scan_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
@@ -799,6 +976,8 @@ void MainWindow::ApplyTheme()
         exit_button_.SetStyle(s);
     }
 
+    UpdateFilterIndicator();
+
 }
 
 void MainWindow::Layout()
@@ -827,9 +1006,11 @@ void MainWindow::Layout()
     source_history_.SetRect(x, y, full_w, DPI(28));
     y += DPI(40);
     nav_panel_.SetRect(x, y, full_w, DPI(34));
-    nav_setup_button_.SetRect(DPI(2), DPI(2), (full_w - DPI(8)) / 3, DPI(30));
-    nav_rename_button_.SetRect(DPI(4) + (full_w - DPI(8)) / 3, DPI(2), (full_w - DPI(8)) / 3, DPI(30));
-    nav_transfer_button_.SetRect(DPI(6) + 2 * (full_w - DPI(8)) / 3, DPI(2), (full_w - DPI(8)) / 3, DPI(30));
+    int nav_w = (full_w - DPI(8)) / 3;
+    nav_setup_button_.SetRect(DPI(2), DPI(2), nav_w, DPI(30));
+    nav_rename_button_.SetRect(DPI(4) + nav_w, DPI(2), nav_w, DPI(30));
+    nav_transfer_button_.SetRect(DPI(6) + nav_w * 2, DPI(2), nav_w, DPI(30));
+    scan_filter_badge_.SetRect(DPI(2) + nav_w - DPI(34), DPI(7), DPI(30), DPI(16));
     y += DPI(42);
 
     int page_h = ss.cy - y - DPI(12);
@@ -869,7 +1050,18 @@ void MainWindow::LayoutSetupPage()
 
     setup_file_pattern_label_.SetRect(m, y, w, DPI(14));
     y += DPI(18);
+    setup_filter_hint_.SetRect(m, y, w, DPI(24));
+    y += DPI(26);
+    int mode_label_w = DPI(84);
+    file_pattern_mode_label_.SetRect(m, y + DPI(3), mode_label_w, DPI(14));
+    file_pattern_mode_.SetRect(m + mode_label_w + DPI(4), y - DPI(2), DPI(96), DPI(28));
+    file_case_sensitive_.SetRect(m + w - DPI(118), y + DPI(2), DPI(118), DPI(18));
+    y += DPI(34);
     setup_file_pattern_.SetRect(m, y, w, DPI(28));
+    y += DPI(34);
+    dir_pattern_mode_label_.SetRect(m, y + DPI(3), mode_label_w, DPI(14));
+    dir_pattern_mode_.SetRect(m + mode_label_w + DPI(4), y - DPI(2), DPI(96), DPI(28));
+    dir_case_sensitive_.SetRect(m + w - DPI(118), y + DPI(2), DPI(118), DPI(18));
     y += DPI(34);
     setup_dir_pattern_.SetRect(m, y, w, DPI(28));
     y += DPI(38);
@@ -930,6 +1122,8 @@ void MainWindow::LayoutRenamePage()
 
     rename_operator_label_.SetRect(m, y, w, DPI(14));
     y += DPI(18);
+    rename_filter_hint_.SetRect(m, y, w, DPI(28));
+    y += DPI(30);
     rename_add_type_.SetRect(m, y - DPI(2), w, DPI(28));
     y += DPI(36);
     rename_params_label_.SetRect(m, y, w, DPI(14));
@@ -973,6 +1167,8 @@ void MainWindow::LayoutTransferPage()
     transfer_target_.SetRect(m, y, w - DPI(30), DPI(28));
     transfer_browse_.SetRect(m + w - DPI(24), y, DPI(24), DPI(28));
     y += DPI(36);
+    transfer_filter_hint_.SetRect(m, y, w, DPI(28));
+    y += DPI(28);
     transfer_preserve_tree_.SetRect(m, y, w, DPI(18));
     y += DPI(22);
     transfer_flatten_.SetRect(m, y, w, DPI(18));
@@ -1034,6 +1230,10 @@ DirectoryScanSettings MainWindow::ReadSettings() const
     s.source_directory = source_edit_.GetData().ToString();
     s.file_patterns = setup_file_pattern_.GetData().ToString();
     s.directory_patterns = setup_dir_pattern_.GetData().ToString();
+    s.file_case_sensitive = file_case_sensitive_.IsChecked();
+    s.dir_case_sensitive = dir_case_sensitive_.IsChecked();
+    s.file_pattern_mode = (PatternMode)(int)file_pattern_mode_.GetSelectedData();
+    s.dir_pattern_mode = (PatternMode)(int)dir_pattern_mode_.GetSelectedData();
     s.recursive = recursive_scan_.IsChecked();
     s.recursive_depth = max(0, (int)depth_limit_.GetData());
     s.include_directories = include_dirs_.IsChecked();
@@ -1095,9 +1295,32 @@ void MainWindow::SetOutputReport(const String& text)
     output_edit_.SetData(text);
 }
 
+bool MainWindow::HasActiveScanFilter() const
+{
+    return !TrimBoth(setup_file_pattern_.GetData().ToString()).IsEmpty()
+        || !TrimBoth(setup_dir_pattern_.GetData().ToString()).IsEmpty()
+        || file_case_sensitive_.IsChecked()
+        || dir_case_sensitive_.IsChecked()
+        || (int)file_pattern_mode_.GetSelectedData() != (int)PatternMode::Glob
+        || (int)dir_pattern_mode_.GetSelectedData() != (int)PatternMode::Glob
+        || size_filter_toggle_.IsChecked()
+        || date_filter_toggle_.IsChecked()
+        || show_hidden_.IsChecked()
+        || !recursive_scan_.IsChecked()
+        || (int)depth_limit_.GetData() != 2
+        || !include_dirs_.IsChecked()
+        || !include_files_.IsChecked();
+}
+
+void MainWindow::UpdateFilterIndicator()
+{
+    scan_filter_badge_.Show(HasActiveScanFilter());
+}
+
 void MainWindow::HandleApplyRename()
 {
-    String dir = source_edit_.GetData().ToString();
+    DirectoryScanSettings settings = ReadSettings();
+    String dir = settings.source_directory;
     if(dir.IsEmpty() || !DirectoryExists(dir)) {
         PromptOK("Select a valid source directory first.");
         return;
@@ -1105,24 +1328,15 @@ void MainWindow::HandleApplyRename()
 
     Vector<FilePlanItem> items;
     Index<String> existing_names;
-    FindFile ff(AppendFileName(dir, "*"));
-    while(ff) {
-        String name = ff.GetName();
-        if(name != "." && name != "..") {
-            existing_names.FindAdd(name);
-            bool is_dir = ff.IsFolder();
-            bool hidden = ff.IsHidden();
-            if((!hidden || show_hidden_.IsChecked()) && ((is_dir && include_dirs_.IsChecked()) || (!is_dir && include_files_.IsChecked()))) {
-                FilePlanItem item;
-                item.source_path = AppendFileName(dir, name);
-                item.relative_path = name;
-                item.source_name = name;
-                item.is_dir = is_dir;
-                items.Add(item);
-            }
-        }
-        ff.Next();
-    }
+    CollectRenameEntries(items,
+                         dir,
+                         dir,
+                         0,
+                         settings,
+                         SplitPatternsText(settings.file_patterns, settings.file_case_sensitive),
+                         SplitPatternsText(settings.directory_patterns, settings.dir_case_sensitive));
+    for(const FilePlanItem& item : items)
+        existing_names.FindAdd(item.source_name);
 
     if(items.IsEmpty()) {
         PromptOK("No eligible files or directories found in the source directory.");
@@ -1136,7 +1350,7 @@ void MainWindow::HandleApplyRename()
     int changed = 0;
     for(int i = 0; i < items.GetCount(); i++) {
         items[i].target_name = preview[i];
-        items[i].target_path = AppendFileName(dir, preview[i]);
+        items[i].target_path = AppendFileName(GetFileFolder(items[i].source_path), preview[i]);
         if(items[i].source_name != items[i].target_name)
             changed++;
     }
@@ -1211,8 +1425,8 @@ void MainWindow::HandleApplyTransfer()
                            source,
                            0,
                            settings,
-                           SplitPatternsText(settings.file_patterns),
-                           SplitPatternsText(settings.directory_patterns));
+                           SplitPatternsText(settings.file_patterns, settings.file_case_sensitive),
+                           SplitPatternsText(settings.directory_patterns, settings.dir_case_sensitive));
     if(entries.IsEmpty()) {
         PromptOK("No eligible entries found to transfer.");
         return;
@@ -1293,20 +1507,24 @@ void MainWindow::ResetRenameModel()
 Vector<String> MainWindow::CollectRenameSamples(Index<String>& existing_names) const
 {
     Vector<String> names;
-    String dir = source_edit_.GetData().ToString();
+    DirectoryScanSettings settings = ReadSettings();
+    String dir = settings.source_directory;
     if(dir.IsEmpty() || !DirectoryExists(dir))
         return names;
 
     int limit = max(1, (int)rename_preview_count_.GetData());
 
-    FindFile ff(AppendFileName(dir, "*"));
-    while(ff && names.GetCount() < limit) {
-        String name = ff.GetName();
-        if(name != "." && name != "..") {
-            existing_names.FindAdd(name);
-            names.Add(name);
-        }
-        ff.Next();
+    Vector<FilePlanItem> items;
+    CollectRenameEntries(items,
+                         dir,
+                         dir,
+                         0,
+                         settings,
+                         SplitPatternsText(settings.file_patterns, settings.file_case_sensitive),
+                         SplitPatternsText(settings.directory_patterns, settings.dir_case_sensitive));
+    for(int i = 0; i < items.GetCount() && names.GetCount() < limit; i++) {
+        existing_names.FindAdd(items[i].source_name);
+        names.Add(items[i].source_name);
     }
     return names;
 }

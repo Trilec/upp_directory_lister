@@ -48,6 +48,7 @@ UiTab::Style MakeTabStyle(int active);
 // Styling helpers for controls that still use CtrlLib text/editor APIs directly.
 void StyleDocEdit(DocEdit& edit, Color ink, Color paper, Font font);
 void StyleEditField(EditField& edit, const char* null_text = nullptr);
+void StyleDropDate(DropDate& edit);
 
 }
 }
