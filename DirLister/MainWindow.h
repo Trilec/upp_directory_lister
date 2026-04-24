@@ -50,6 +50,7 @@ private:
     // Small UI synchronization helpers.
     void UpdateStatus(const String& text, bool busy = false);
     void UpdateFooterPath();
+    void SyncOutputContentBounds();
     void HandleSlashModeChanged();
     void SetSidebarPage(int page);
 
@@ -180,6 +181,9 @@ private:
     UiButton help_button_;
     UiButton exit_button_;
     UiLabel state_label_;
+    UiToolButton output_copy_button_;
+    UiLabel output_copy_label_;
+    UiScrollPanel output_scroll_panel_;
     UiLabel output_edit_;
     UiLabel footer_meta_;
     UiLabel footer_path_;

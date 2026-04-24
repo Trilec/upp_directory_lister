@@ -23,8 +23,6 @@ public:
         Add(shell_);
         shell_.Add(title_);
         shell_.Add(doc_panel_);
-        shell_.Add(copy_button_);
-        shell_.Add(copy_label_);
         shell_.Add(close_);
         doc_panel_.Add(doc_);
 
@@ -38,9 +36,6 @@ public:
 
         close_.SetText("Close");
         close_.WhenAction << [=] { Close(); };
-        copy_button_.SetIcon(ICON_CONTENT_CONTENT_COPY_48()).SetIconSize(15, 15);
-        copy_button_.WhenAction << [=] { WriteClipboardText(doc_.GetData().ToString()); };
-        copy_label_.SetText("Copy");
 
         doc_.EnableRich().SetSelectable().SetAlign(UiAlign::LEFT, UiAlign::TOP);
         auto heading = [&](const String& text, Color ink = BlueText()) {
@@ -166,8 +161,6 @@ public:
         shell_.SetRect(GetSize());
         int m = DPI(14);
         title_.SetRect(m, m, GetSize().cx - m * 2, DPI(34));
-        copy_button_.SetRect(GetSize().cx - m - DPI(160), GetSize().cy - m - DPI(28), DPI(22), DPI(22));
-        copy_label_.SetRect(GetSize().cx - m - DPI(132), GetSize().cy - m - DPI(26), DPI(36), DPI(18));
         close_.SetRect(GetSize().cx - m - DPI(90), GetSize().cy - m - DPI(30), DPI(90), DPI(30));
         doc_panel_.SetRect(m, DPI(56), GetSize().cx - m * 2, GetSize().cy - DPI(112));
         doc_.SetRect(DPI(10), DPI(10), doc_panel_.GetSize().cx - DPI(20), doc_panel_.GetSize().cy - DPI(20));
@@ -219,19 +212,6 @@ public:
             doc_.SetStyle(s);
         }
         close_.SetStyle(MakeActionStyle(false));
-        {
-            UiToolButton::Style s = MakeSmallButtonStyle();
-            for(int i = 0; i < 4; i++) {
-                s.palette.face[i] = UiFill::None();
-                s.palette.frame[i] = Null;
-                s.palette.ink[i] = Color(156, 163, 175);
-            }
-            s.metrics.face_enabled = false;
-            s.metrics.frame_enabled = false;
-            s.metrics.content_margin = Rect(0, 0, 0, 0);
-            copy_button_.SetStyle(s);
-        }
-        copy_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     }
 
 private:
@@ -239,8 +219,6 @@ private:
     UiTitleCard title_;
     UiPanel doc_panel_;
     UiLabel doc_;
-    UiToolButton copy_button_;
-    UiLabel copy_label_;
     UiButton close_;
 };
 
@@ -596,10 +574,14 @@ void MainWindow::BuildUi()
     main_panel_.Add(output_format_);
     main_panel_.Add(slash_mode_);
     main_panel_.Add(state_label_);
+    main_panel_.Add(output_copy_button_);
+    main_panel_.Add(output_copy_label_);
     main_panel_.Add(output_panel_);
     main_panel_.Add(footer_meta_);
     main_panel_.Add(footer_path_);
-    output_panel_.Add(output_edit_);
+    output_panel_.Add(output_scroll_panel_);
+    output_scroll_panel_.Content().Add(output_edit_);
+    output_scroll_panel_.SetScrollMode(UIPANELSCROLL_VERTICAL);
 
     title_card_.SetTitle("DirLister Pro")
                .SetSubTitle("Directory listing and renaming tool")
@@ -667,9 +649,15 @@ void MainWindow::BuildUi()
     exit_button_.SetText("EXIT");
     exit_button_.SetIcon(ICON_NAVIGATION_EXIT_TO_APP_48()).SetIconSize(15, 15).SetContentGap(DPI(10));
     exit_button_.WhenAction << [=] { Close(); };
+    output_copy_button_.SetIcon(ICON_CONTENT_CONTENT_COPY_48())
+                       .SetIconSize(14, 14)
+                       .SetIconRenderMode(UiIconRenderMode::MonoTint)
+                       .SetIconColor(Color(156, 163, 175));
+    output_copy_button_.WhenAction << [=] { WriteClipboardText(output_edit_.GetData().ToString()); };
+    output_copy_label_.SetText("Copy Output");
     output_edit_.EnableRich().SetSelectable().SetAlign(UiAlign::LEFT, UiAlign::TOP);
     output_edit_.SetText(String());
-    footer_meta_.SetText("Choose a directory and generate a listing.    THREADS: 01    ENCODING: UTF-8");
+    footer_meta_.SetText(String());
     footer_path_.SetText(source_edit_.GetData().ToString());
 }
 
@@ -912,6 +900,36 @@ void MainWindow::ApplyTheme()
     sidebar_panel_.SetStyle(MakePanelStyle(SidebarBg(), Border(), 0, 14));
     main_panel_.SetStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
     output_panel_.SetStyle(MakePanelStyle(OutputBg(), Null, 0, 12));
+    output_scroll_panel_.SetStyle(MakeScrollPanelStyle());
+    output_scroll_panel_.Transparent();
+    output_scroll_panel_.Content().Transparent();
+    {
+        UiScrollBar::Style sb = UiTheme::ResolveScrollBar();
+        sb.thin_idle = false;
+        sb.fade_idle = false;
+        sb.thick_px = DPI(16);
+        sb.thin_px = DPI(16);
+        sb.thumb_paint_px_idle = DPI(12);
+        sb.thumb_paint_px_hot = DPI(12);
+        sb.track_paint_px_idle = DPI(16);
+        sb.track_paint_px_hot = DPI(16);
+        sb.track_palette.face[ST_NORMAL] = UiFill::Solid(Color(24, 28, 36));
+        sb.track_palette.face[ST_HOT] = UiFill::Solid(Color(24, 28, 36));
+        sb.track_palette.face[ST_PRESSED] = UiFill::Solid(Color(24, 28, 36));
+        sb.track_palette.frame[ST_NORMAL] = Color(60, 67, 79);
+        sb.track_palette.frame[ST_HOT] = Color(75, 85, 99);
+        sb.track_palette.frame[ST_PRESSED] = Color(75, 85, 99);
+        sb.track_metrics.face_enabled = true;
+        sb.track_metrics.frame_enabled = true;
+        sb.track_metrics.frame_width = DPI(1);
+        sb.thumb_palette.face[ST_NORMAL] = Color(120, 130, 145);
+        sb.thumb_palette.face[ST_HOT] = Color(148, 163, 184);
+        sb.thumb_palette.face[ST_PRESSED] = Color(96, 165, 250);
+        sb.thumb_metrics.face_enabled = true;
+        sb.thumb_metrics.frame_enabled = false;
+        sb.thumb_metrics.radius = DPI(6);
+        output_scroll_panel_.SetScrollBarStyle(sb);
+    }
     nav_panel_.SetStyle(MakePanelStyle(BodyBg(), Null, 8, 2));
     rename_stack_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
     rename_preview_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
@@ -963,6 +981,7 @@ void MainWindow::ApplyTheme()
     footer_meta_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     footer_path_.SetStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
     state_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    output_copy_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     {
         UiLabel::Style s = MakeLabelStyle(OutputText(), UiLabelRole::Body, false);
         for(int i = 0; i < 4; i++) {
@@ -1056,6 +1075,20 @@ void MainWindow::ApplyTheme()
     rename_add_button_.SetStyle(MakeSmallButtonStyle());
     rename_remove_button_.SetStyle(MakeSmallButtonStyle());
     transfer_browse_.SetStyle(MakeSmallButtonStyle());
+    {
+        UiToolButton::Style s = MakeSmallButtonStyle();
+        for(int i = 0; i < 4; i++) {
+            s.palette.face[i] = UiFill::None();
+            s.palette.frame[i] = Null;
+            s.palette.ink[i] = Color(156, 163, 175);
+            s.palette.icon[i] = Color(156, 163, 175);
+        }
+        s.metrics.face_enabled = false;
+        s.metrics.frame_enabled = false;
+        s.metrics.focus_enabled = false;
+        s.metrics.content_margin = Rect(0, 0, 0, 0);
+        output_copy_button_.SetStyle(s);
+    }
     generate_button_.SetStyle(MakeActionStyle(true));
     abort_button_.SetStyle(MakeActionStyle(false));
     help_button_.SetStyle(MakeActionStyle(false));
@@ -1125,21 +1158,34 @@ void MainWindow::Layout()
     Size ms = main_panel_.GetSize();
     int mx = DPI(14);
     int my = DPI(10);
-    generate_button_.SetRect(mx, my, DPI(122), DPI(30));
-    abort_button_.SetRect(mx + DPI(132), my, DPI(82), DPI(30));
-    output_format_.SetRect(mx + DPI(240), my + DPI(1), DPI(128), DPI(28));
-    slash_mode_.SetRect(mx + DPI(376), my + DPI(1), DPI(132), DPI(28));
-    help_button_.SetRect(ms.cx - mx - DPI(246), my, DPI(118), DPI(30));
-    exit_button_.SetRect(ms.cx - mx - DPI(118), my, DPI(118), DPI(30));
-    state_label_.SetRect(ms.cx - mx - DPI(306), my + DPI(4), DPI(52), DPI(20));
+    int content_w = ms.cx - mx * 2;
+    int row1_left_w = DPI(122 + 10 + 82 + 26 + 128 + 8 + 132);
+    int row1_right_w = DPI(52 + 10 + 118 + 10 + 118);
+    bool wrap_top = content_w < row1_left_w + row1_right_w + DPI(16);
 
-    int output_top = my + DPI(44);
+    int row1_y = my;
+    int row2_y = wrap_top ? my + DPI(36) : my;
+
+    generate_button_.SetRect(mx, row1_y, DPI(122), DPI(30));
+    abort_button_.SetRect(mx + DPI(132), row1_y, DPI(82), DPI(30));
+    output_format_.SetRect(mx + DPI(240), row1_y + DPI(1), DPI(128), DPI(28));
+    slash_mode_.SetRect(mx + DPI(376), row1_y + DPI(1), DPI(132), DPI(28));
+
+    int right_group_x = max(mx, ms.cx - mx - row1_right_w);
+    state_label_.SetRect(right_group_x, row2_y + DPI(4), DPI(52), DPI(20));
+    help_button_.SetRect(right_group_x + DPI(62), row2_y, DPI(118), DPI(30));
+    exit_button_.SetRect(right_group_x + DPI(190), row2_y, DPI(118), DPI(30));
+
+    int output_top = wrap_top ? my + DPI(78) : my + DPI(44);
     int footer_h = DPI(18);
     output_panel_.SetRect(mx, output_top, ms.cx - mx * 2, ms.cy - output_top - footer_h - DPI(14));
-    output_edit_.SetRect(DPI(10), DPI(10), output_panel_.GetSize().cx - DPI(20), output_panel_.GetSize().cy - DPI(20));
+    output_scroll_panel_.SetRect(DPI(10), DPI(10), output_panel_.GetSize().cx - DPI(20), output_panel_.GetSize().cy - DPI(20));
+    SyncOutputContentBounds();
     int footer_y = output_panel_.GetRect().bottom + DPI(8);
-    footer_meta_.SetRect(mx, footer_y, DPI(340), footer_h);
-    footer_path_.SetRect(ms.cx - mx - DPI(290), footer_y, DPI(290), footer_h);
+    output_copy_button_.SetRect(ms.cx - mx - DPI(112), footer_y - DPI(1), DPI(18), DPI(18));
+    output_copy_label_.SetRect(ms.cx - mx - DPI(90), footer_y - DPI(1), DPI(74), DPI(18));
+    footer_meta_.SetRect(mx, footer_y, DPI(1), footer_h);
+    footer_path_.SetRect(ms.cx - mx - DPI(450), footer_y, DPI(320), footer_h);
 }
 
 void MainWindow::LayoutSetupPage()
@@ -1377,6 +1423,7 @@ void MainWindow::HandleGenerate()
         output_edit_.SetAlign(UiAlign::LEFT, UiAlign::TOP);
         output_edit_.SetText(DirectoryEngine::Generate(settings));
     }
+    SyncOutputContentBounds();
     RefreshRenamePreview();
     UpdateStatus("READY", false);
 }
@@ -1404,9 +1451,19 @@ void MainWindow::UpdateFooterPath()
     footer_path_.SetText(source_edit_.GetData().ToString());
 }
 
+void MainWindow::SyncOutputContentBounds()
+{
+    Size viewport = output_scroll_panel_.GetSize();
+    Size need = output_edit_.GetContentSize();
+    output_edit_.SetRect(0, 0, max(viewport.cx, need.cx), max(viewport.cy, need.cy));
+    output_scroll_panel_.RefreshLayout();
+    output_scroll_panel_.Layout();
+}
+
 void MainWindow::SetOutputReport(const String& text)
 {
     output_edit_.SetText(text);
+    SyncOutputContentBounds();
 }
 
 bool MainWindow::HasActiveScanFilter() const
