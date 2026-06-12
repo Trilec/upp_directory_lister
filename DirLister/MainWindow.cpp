@@ -32,7 +32,7 @@ public:
               .SetMedia(ICON_DESIGN_SETTINGS_48(), Size(DPI(16), DPI(16)))
               .SetMediaSide(UiAlign::LEFT)
               .SetMediaReserve(DPI(16));
-        title_.ShowRule(false).ShowBottomLine(false).EnableHover(false).SetSelectable(false);
+        title_.ShowTitleLine(false).ShowCardLine(false).EnableHover(false).SetSelectable(false);
 
         close_.SetText("Close");
         close_.WhenAction << [=] { Close(); };
@@ -173,8 +173,8 @@ public:
 
     void ApplyTheme()
     {
-        shell_.SetStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
-        doc_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
+        shell_.SetCustomStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
+        doc_panel_.SetCustomStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
 
         UiTitleCard::Style title_style = UiTheme::ResolveTitleCard();
         for(int i = 0; i < 4; i++) {
@@ -191,7 +191,7 @@ public:
         title_style.subtitle_color = BlueText();
         title_style.media_side = UiAlign::LEFT;
         title_style.media_gap = DPI(8);
-        title_.SetStyle(title_style);
+        title_.SetCustomStyle(title_style);
 
         {
             UiLabel::Style s = MakeLabelStyle(Text(), UiLabelRole::Body, false);
@@ -209,9 +209,9 @@ public:
             s.metrics.frame_enabled = false;
             s.metrics.content_margin = Rect(0, 0, 0, 0);
             s.transparent = false;
-            doc_.SetStyle(s);
+            doc_.SetCustomStyle(s);
         }
-        close_.SetStyle(MakeActionStyle(false));
+        close_.SetCustomStyle(MakeActionStyle(false));
     }
 
 private:
@@ -534,9 +534,9 @@ MainWindow::MainWindow()
     SetRect(0, 0, DPI(1280), DPI(760));
 
     UiThemeContext ctx;
-    ctx.preset = UiThemePreset::Rounded;
+    ctx.preset = UiThemePreset::Pill;
     ctx.mode = UiThemeMode::Dark;
-    UiTheme::SetContext(ctx);
+    UiTheme::Set(ctx);
 
     BuildUi();
     ApplyTheme();
@@ -589,7 +589,7 @@ void MainWindow::BuildUi()
                .SetMedia(CtrlImg::Dir(), Size(DPI(16), DPI(16)))
                .SetMediaSide(UiAlign::LEFT)
                .SetMediaReserve(DPI(16));
-    title_card_.ShowRule(false).ShowBottomLine(false).EnableHover(false).SetSelectable(false);
+    title_card_.ShowTitleLine(false).ShowCardLine(false).EnableHover(false).SetSelectable(false);
     version_badge_.SetText("v0.12");
 
     source_label_.SetText("SOURCE DIRECTORY");
@@ -897,10 +897,10 @@ void MainWindow::AddSidebarPages()
 void MainWindow::ApplyTheme()
 {
     // Keep appearance decisions centralized so UI logic stays focused on behavior.
-    sidebar_panel_.SetStyle(MakePanelStyle(SidebarBg(), Border(), 0, 14));
-    main_panel_.SetStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
-    output_panel_.SetStyle(MakePanelStyle(OutputBg(), Null, 0, 12));
-    output_scroll_panel_.SetStyle(MakeScrollPanelStyle());
+    sidebar_panel_.SetCustomStyle(MakePanelStyle(SidebarBg(), Border(), 0, 14));
+    main_panel_.SetCustomStyle(MakePanelStyle(BodyBg(), BodyBg(), 0, 14));
+    output_panel_.SetCustomStyle(MakePanelStyle(OutputBg(), Null, 0, 12));
+    output_scroll_panel_.SetCustomStyle(MakeScrollPanelStyle());
     output_scroll_panel_.Transparent();
     output_scroll_panel_.Content().Transparent();
     {
@@ -928,11 +928,11 @@ void MainWindow::ApplyTheme()
         sb.thumb_metrics.face_enabled = true;
         sb.thumb_metrics.frame_enabled = false;
         sb.thumb_metrics.radius = DPI(6);
-        output_scroll_panel_.SetScrollBarStyle(sb);
+        output_scroll_panel_.SetCustomScrollBarStyle(sb);
     }
-    nav_panel_.SetStyle(MakePanelStyle(BodyBg(), Null, 8, 2));
-    rename_stack_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
-    rename_preview_panel_.SetStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
+    nav_panel_.SetCustomStyle(MakePanelStyle(BodyBg(), Null, 8, 2));
+    rename_stack_panel_.SetCustomStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
+    rename_preview_panel_.SetCustomStyle(MakePanelStyle(BodyBg(), Border(), 4, 0));
     setup_page_.Transparent();
     rename_page_.Transparent();
     transfer_page_.Transparent();
@@ -955,33 +955,33 @@ void MainWindow::ApplyTheme()
     title_style.media_gap = DPI(6);
     title_style.media_reserve = DPI(16);
     title_style.media_tint_mono = true;
-    title_style.show_rule = false;
-    title_style.show_bottom_line = false;
-    title_card_.SetStyle(title_style);
-    version_badge_.SetStyle(MakeBadgeStyle(BlueDark(), StatusText()));
-    scan_filter_badge_.SetStyle(MakeBadgeStyle(GreenDark(), GreenText()));
+    title_style.title_line = false;
+    title_style.card_line = false;
+    title_card_.SetCustomStyle(title_style);
+    version_badge_.SetCustomStyle(MakeBadgeStyle(BlueDark(), StatusText()));
+    scan_filter_badge_.SetCustomStyle(MakeBadgeStyle(GreenDark(), GreenText()));
 
-    source_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    setup_file_pattern_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
-    setup_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
-    file_pattern_mode_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    dir_pattern_mode_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    size_threshold_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
-    date_range_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
-    sort_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
-    depth_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    display_label_.SetStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
-    rename_operator_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
-    rename_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
-    rename_params_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
-    rename_steps_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
-    rename_preview_label_.SetStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
-    transfer_target_label_.SetStyle(MakeLabelStyle(AmberText(), UiLabelRole::Caption));
-    transfer_filter_hint_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
-    footer_meta_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
-    footer_path_.SetStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
-    state_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    output_copy_label_.SetStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    source_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    setup_file_pattern_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    setup_filter_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    file_pattern_mode_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    dir_pattern_mode_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    size_threshold_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    date_range_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    sort_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    depth_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    display_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
+    rename_operator_label_.SetCustomStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
+    rename_filter_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    rename_params_label_.SetCustomStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
+    rename_steps_label_.SetCustomStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
+    rename_preview_label_.SetCustomStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
+    transfer_target_label_.SetCustomStyle(MakeLabelStyle(AmberText(), UiLabelRole::Caption));
+    transfer_filter_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    footer_meta_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
+    footer_path_.SetCustomStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
+    state_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    output_copy_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     {
         UiLabel::Style s = MakeLabelStyle(OutputText(), UiLabelRole::Body, false);
         for(int i = 0; i < 4; i++) {
@@ -998,17 +998,17 @@ void MainWindow::ApplyTheme()
         s.metrics.frame_enabled = false;
         s.metrics.content_margin = Rect(0, 0, 0, 0);
         s.transparent = false;
-        output_edit_.SetStyle(s);
+        output_edit_.SetCustomStyle(s);
     }
 
-    source_edit_.SetStyle(MakeEditStyle());
-    setup_file_pattern_.SetStyle(MakeEditStyle());
-    setup_dir_pattern_.SetStyle(MakeEditStyle());
-    rename_param_a_.SetStyle(MakeEditStyle());
-    rename_param_b_.SetStyle(MakeEditStyle());
-    rename_param_c_.SetStyle(MakeEditStyle());
-    rename_preview_input_.SetStyle(MakeEditStyle());
-    transfer_target_.SetStyle(MakeEditStyle());
+    source_edit_.SetCustomStyle(MakeEditStyle());
+    setup_file_pattern_.SetCustomStyle(MakeEditStyle());
+    setup_dir_pattern_.SetCustomStyle(MakeEditStyle());
+    rename_param_a_.SetCustomStyle(MakeEditStyle());
+    rename_param_b_.SetCustomStyle(MakeEditStyle());
+    rename_param_c_.SetCustomStyle(MakeEditStyle());
+    rename_preview_input_.SetCustomStyle(MakeEditStyle());
+    transfer_target_.SetCustomStyle(MakeEditStyle());
     StyleEditField(rename_preview_count_);
 
     UiList::Style list_style = UiTheme::ResolveList();
@@ -1035,46 +1035,46 @@ void MainWindow::ApplyTheme()
     list_style.selected_ink = White();
     list_style.selected_frame = Null;
     list_style.separator_color = Border();
-    rename_stack_.SetStyle(list_style);
+    rename_stack_.SetCustomStyle(list_style);
 
-    source_history_.SetStyle(MakeDropdownStyle());
-    file_pattern_mode_.SetStyle(MakeDropdownStyle());
-    dir_pattern_mode_.SetStyle(MakeDropdownStyle());
-    output_format_.SetStyle(MakeDropdownStyle());
-    slash_mode_.SetStyle(MakeDropdownStyle());
-    size_unit_.SetStyle(MakeDropdownStyle());
-    sort_primary_.SetStyle(MakeDropdownStyle());
-    sort_secondary_.SetStyle(MakeDropdownStyle());
-    dir_placement_.SetStyle(MakeDropdownStyle());
-    rename_add_type_.SetStyle(MakeDropdownStyle());
-    rename_mode_.SetStyle(MakeDropdownStyle());
-    transfer_conflict_.SetStyle(MakeDropdownStyle());
+    source_history_.SetCustomStyle(MakeDropdownStyle());
+    file_pattern_mode_.SetCustomStyle(MakeDropdownStyle());
+    dir_pattern_mode_.SetCustomStyle(MakeDropdownStyle());
+    output_format_.SetCustomStyle(MakeDropdownStyle());
+    slash_mode_.SetCustomStyle(MakeDropdownStyle());
+    size_unit_.SetCustomStyle(MakeDropdownStyle());
+    sort_primary_.SetCustomStyle(MakeDropdownStyle());
+    sort_secondary_.SetCustomStyle(MakeDropdownStyle());
+    dir_placement_.SetCustomStyle(MakeDropdownStyle());
+    rename_add_type_.SetCustomStyle(MakeDropdownStyle());
+    rename_mode_.SetCustomStyle(MakeDropdownStyle());
+    transfer_conflict_.SetCustomStyle(MakeDropdownStyle());
 
     UiCheckBox::Style check_style = MakeCheckStyle();
-    size_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    file_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    dir_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    date_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    reverse_sort_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    recursive_scan_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    include_dirs_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    include_files_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    show_hidden_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    show_path_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    show_size_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    show_date_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    show_extension_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    transfer_preserve_tree_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    transfer_flatten_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
-    transfer_verify_hash_.SetVisual(UICHECKVIS_CLASSIC).SetStyle(check_style).SetSizeMin(0, DPI(20));
+    size_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    file_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    dir_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    date_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    reverse_sort_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    recursive_scan_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    include_dirs_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    include_files_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    show_hidden_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    show_path_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    show_size_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    show_date_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    show_extension_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    transfer_preserve_tree_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    transfer_flatten_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    transfer_verify_hash_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
 
-    nav_setup_button_.SetStyle(MakeNavButtonStyle(BlueDark(), BlueText(), true));
-    nav_rename_button_.SetStyle(MakeNavButtonStyle(GreenDark(), GreenText(), false));
-    nav_transfer_button_.SetStyle(MakeNavButtonStyle(AmberDark(), AmberText(), false));
-    source_browse_.SetStyle(MakeSmallButtonStyle());
-    rename_add_button_.SetStyle(MakeSmallButtonStyle());
-    rename_remove_button_.SetStyle(MakeSmallButtonStyle());
-    transfer_browse_.SetStyle(MakeSmallButtonStyle());
+    nav_setup_button_.SetCustomStyle(MakeNavButtonStyle(BlueDark(), BlueText(), true));
+    nav_rename_button_.SetCustomStyle(MakeNavButtonStyle(GreenDark(), GreenText(), false));
+    nav_transfer_button_.SetCustomStyle(MakeNavButtonStyle(AmberDark(), AmberText(), false));
+    source_browse_.SetCustomStyle(MakeSmallButtonStyle());
+    rename_add_button_.SetCustomStyle(MakeSmallButtonStyle());
+    rename_remove_button_.SetCustomStyle(MakeSmallButtonStyle());
+    transfer_browse_.SetCustomStyle(MakeSmallButtonStyle());
     {
         UiToolButton::Style s = MakeSmallButtonStyle();
         for(int i = 0; i < 4; i++) {
@@ -1087,15 +1087,15 @@ void MainWindow::ApplyTheme()
         s.metrics.frame_enabled = false;
         s.metrics.focus_enabled = false;
         s.metrics.content_margin = Rect(0, 0, 0, 0);
-        output_copy_button_.SetStyle(s);
+        output_copy_button_.SetCustomStyle(s);
     }
-    generate_button_.SetStyle(MakeActionStyle(true));
-    abort_button_.SetStyle(MakeActionStyle(false));
-    help_button_.SetStyle(MakeActionStyle(false));
-    rename_save_button_.SetStyle(MakeActionStyle(false));
-    rename_apply_button_.SetStyle(MakeActionStyle(true));
-    transfer_apply_button_.SetStyle(MakeActionStyle(true));
-    exit_button_.SetStyle(MakeActionStyle(true));
+    generate_button_.SetCustomStyle(MakeActionStyle(true));
+    abort_button_.SetCustomStyle(MakeActionStyle(false));
+    help_button_.SetCustomStyle(MakeActionStyle(false));
+    rename_save_button_.SetCustomStyle(MakeActionStyle(false));
+    rename_apply_button_.SetCustomStyle(MakeActionStyle(true));
+    transfer_apply_button_.SetCustomStyle(MakeActionStyle(true));
+    exit_button_.SetCustomStyle(MakeActionStyle(true));
     {
         UiButton::Style s = exit_button_.GetStyle();
         for(int i = 0; i < 4; i++) {
@@ -1106,7 +1106,7 @@ void MainWindow::ApplyTheme()
         }
         s.palette.face[ST_HOT] = UiFill::Solid(Color(0xb9, 0x1c, 0x1c));
         s.palette.face[ST_PRESSED] = UiFill::Solid(Color(0x99, 0x1b, 0x1b));
-        exit_button_.SetStyle(s);
+        exit_button_.SetCustomStyle(s);
     }
 
     UpdateFilterIndicator();
@@ -1337,9 +1337,9 @@ void MainWindow::SetSidebarPage(int page)
     setup_page_.Show(active_page_ == 0);
     rename_page_.Show(active_page_ == 1);
     transfer_page_.Show(active_page_ == 2);
-    nav_setup_button_.SetStyle(MakeNavButtonStyle(BlueDark(), BlueText(), active_page_ == 0));
-    nav_rename_button_.SetStyle(MakeNavButtonStyle(GreenDark(), GreenText(), active_page_ == 1));
-    nav_transfer_button_.SetStyle(MakeNavButtonStyle(AmberDark(), AmberText(), active_page_ == 2));
+    nav_setup_button_.SetCustomStyle(MakeNavButtonStyle(BlueDark(), BlueText(), active_page_ == 0));
+    nav_rename_button_.SetCustomStyle(MakeNavButtonStyle(GreenDark(), GreenText(), active_page_ == 1));
+    nav_transfer_button_.SetCustomStyle(MakeNavButtonStyle(AmberDark(), AmberText(), active_page_ == 2));
 }
 
 void MainWindow::HandleBrowseSource()

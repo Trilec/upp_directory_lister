@@ -139,6 +139,17 @@ Package file:
 
 - `DirLister/DirLister.upp`
 
+Local U++ workspace file:
+
+- `GitHubOut.var`
+
+Current local nest used for builds:
+
+- `E:/apps/github/upp_directory_lister`
+- `E:/apps/github/upp_Ui`
+- `E:/apps/github/upp_AnimationEasing`
+- `E:/upp-18468/uppsrc`
+
 Required U++ packages:
 
 - `Core`
@@ -146,3 +157,21 @@ Required U++ packages:
 - `CtrlCore`
 - `CtrlLib`
 - `Ui`
+
+Local output directory used by this repo:
+
+- `E:\apps\github\upp_directory_lister\out`
+
+Typical local build command:
+
+```powershell
+& "E:\upp-18468\umk.exe" "E:\apps\github\upp_directory_lister,E:\apps\github\upp_Ui,E:\apps\github\upp_AnimationEasing,E:\upp-18468\uppsrc" "DirLister" "CLANGx64" "--out-dir" "E:\apps\github\upp_directory_lister\out" "-br" "+GUI" "E:\apps\github\upp_directory_lister\out\DirLister.exe"
+```
+
+Build notes:
+
+- Build the `DirLister` package, not a different package name.
+- Make sure the local `out` directory exists before building.
+- Emit the executable directly into `out`, not a nested subfolder.
+- If `umk` reports missing packages, verify the nest includes both `upp_Ui` and `E:\upp-18468\uppsrc`.
+- `GitHubOut.var` is the local reference for the expected package nest and output setup.
