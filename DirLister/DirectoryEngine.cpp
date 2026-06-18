@@ -200,7 +200,7 @@ int CompareEntries(const ScanEntry& a, const ScanEntry& b, const DirectoryScanSe
 
 bool PassDateFilter(const ScanEntry& entry, const DirectoryScanSettings& settings)
 {
-    if(!settings.enable_date_filter || IsNull(entry.modified))
+    if(!settings.enable_filtering || !settings.enable_date_filter || IsNull(entry.modified))
         return true;
 
     Date d(entry.modified.year, entry.modified.month, entry.modified.day);
@@ -213,7 +213,7 @@ bool PassDateFilter(const ScanEntry& entry, const DirectoryScanSettings& setting
 
 bool PassSizeFilter(const ScanEntry& entry, const DirectoryScanSettings& settings)
 {
-    if(entry.is_dir || !settings.enable_size_filter)
+    if(entry.is_dir || !settings.enable_filtering || !settings.enable_size_filter)
         return true;
 
     double scale = UnitMultiplier(settings.size_unit);
@@ -285,14 +285,15 @@ void CollectEntries(Vector<ScanEntry>& out,
         entry.modified = ff.GetLastWriteTime();
         entry.depth = depth;
 
-        bool pattern_match = TypePatternMatch(entry.is_dir,
-                                              file_patterns,
-                                              dir_patterns,
-                                              entry.name,
-                                              settings.file_case_sensitive,
-                                              settings.dir_case_sensitive,
-                                              settings.file_pattern_mode,
-                                              settings.dir_pattern_mode);
+        bool pattern_match = !settings.enable_filtering ||
+            TypePatternMatch(entry.is_dir,
+                             file_patterns,
+                             dir_patterns,
+                             entry.name,
+                             settings.file_case_sensitive,
+                             settings.dir_case_sensitive,
+                             settings.file_pattern_mode,
+                             settings.dir_pattern_mode);
 
         if((!entry.hidden || settings.show_hidden) && pattern_match && PassDateFilter(entry, settings) && PassSizeFilter(entry, settings)) {
             if(entry.is_dir && settings.include_directories)
@@ -316,8 +317,11 @@ Vector<DirectoryOutputLine> BuildTextLines(const Vector<ScanEntry>& entries, con
         line << String(' ', max(0, entry.depth) * 2);
 
         String path_or_name;
-        if(settings.show_path)
-            path_or_name = entry.relative_path.IsEmpty() ? entry.name : entry.relative_path;
+        if(settings.show_path) {
+            path_or_name = entry.full_path;
+            if(!settings.show_extension && !entry.is_dir)
+                path_or_name = TrimExtension(path_or_name);
+        }
         else {
             path_or_name = settings.show_extension || entry.is_dir ? entry.name : TrimExtension(entry.name);
             if(entry.is_dir)
@@ -325,8 +329,6 @@ Vector<DirectoryOutputLine> BuildTextLines(const Vector<ScanEntry>& entries, con
         }
         line << NormalizeSlashes(path_or_name, settings.slash_mode);
 
-        if(settings.show_extension && !entry.is_dir && !entry.extension.IsEmpty())
-            line << "  [" << entry.extension << "]";
         if(settings.show_size && !entry.is_dir)
             line << "  [" << Format64(entry.size) << " B]";
         if(settings.show_date && !IsNull(entry.modified))
@@ -354,7 +356,10 @@ String BuildCsvOutput(const Vector<ScanEntry>& entries, const DirectoryScanSetti
 {
     String out = "type,path,name,extension,size,modified\n";
     for(const ScanEntry& entry : entries) {
-        String display_path = NormalizeSlashes(entry.relative_path.IsEmpty() ? entry.name : entry.relative_path, settings.slash_mode);
+        String display_path = settings.show_path ? entry.full_path : (entry.relative_path.IsEmpty() ? entry.name : entry.relative_path);
+        if(!settings.show_extension && !entry.is_dir)
+            display_path = TrimExtension(display_path);
+        display_path = NormalizeSlashes(display_path, settings.slash_mode);
         out << (entry.is_dir ? "directory" : "file") << ','
             << CsvEscape(display_path) << ','
             << CsvEscape(settings.show_extension || entry.is_dir ? entry.name : TrimExtension(entry.name)) << ','
@@ -370,7 +375,10 @@ String BuildJsonOutput(const Vector<ScanEntry>& entries, const DirectoryScanSett
     String out = "[\n";
     for(int i = 0; i < entries.GetCount(); i++) {
         const ScanEntry& entry = entries[i];
-        String display_path = NormalizeSlashes(entry.relative_path.IsEmpty() ? entry.name : entry.relative_path, settings.slash_mode);
+        String display_path = settings.show_path ? entry.full_path : (entry.relative_path.IsEmpty() ? entry.name : entry.relative_path);
+        if(!settings.show_extension && !entry.is_dir)
+            display_path = TrimExtension(display_path);
+        display_path = NormalizeSlashes(display_path, settings.slash_mode);
         out << "  {"
             << "\"type\":\"" << (entry.is_dir ? "directory" : "file") << "\"," 
             << "\"path\":\"" << JsonEscape(display_path) << "\"," 
@@ -404,7 +412,8 @@ String DirectoryEngine::Generate(const DirectoryScanSettings& settings)
                    SplitPatterns(normalized.file_patterns, normalized.file_case_sensitive),
                    SplitPatterns(normalized.directory_patterns, normalized.dir_case_sensitive));
 
-    Sort(entries, [&](const ScanEntry& a, const ScanEntry& b) { return CompareEntries(a, b, normalized) < 0; });
+    if(normalized.enable_sorting)
+        Sort(entries, [&](const ScanEntry& a, const ScanEntry& b) { return CompareEntries(a, b, normalized) < 0; });
 
     switch(normalized.output_format) {
     case OutputFormat::Csv:

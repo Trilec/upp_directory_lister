@@ -67,6 +67,8 @@ struct DirectoryScanSettings {
     bool include_files = true;
     bool show_hidden = false;
     bool reverse_sort = false;
+    bool enable_sorting = true;
+    bool enable_filtering = false;
 
     bool enable_size_filter = false;
     double min_size = 0;
@@ -83,10 +85,10 @@ struct DirectoryScanSettings {
     SlashMode slash_mode = SlashMode::Native;
     OutputFormat output_format = OutputFormat::Text;
 
-    bool show_path = true;
-    bool show_size = true;
-    bool show_date = true;
-    bool show_extension = false;
+    bool show_path = false;
+    bool show_size = false;
+    bool show_date = false;
+    bool show_extension = true;
 };
 
 struct DirectoryOutputLine : Moveable<DirectoryOutputLine> {

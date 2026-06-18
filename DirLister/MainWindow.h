@@ -107,6 +107,7 @@ private:
     UiDropdown dir_pattern_mode_;
     UiCheckBox dir_case_sensitive_;
     UiLineEdit setup_dir_pattern_;
+    UiCheckBox filter_toggle_;
     UiLabel size_threshold_label_;
     UiCheckBox size_filter_toggle_;
     EditInt size_min_;
@@ -117,6 +118,7 @@ private:
     DropDate date_from_;
     DropDate date_to_;
     UiLabel sort_label_;
+    UiCheckBox sort_toggle_;
     UiDropdown sort_primary_;
     UiDropdown sort_secondary_;
     UiDropdown dir_placement_;
@@ -128,6 +130,7 @@ private:
     UiCheckBox include_files_;
     UiCheckBox show_hidden_;
     UiLabel display_label_;
+    UiGridLayout view_grid_;
     UiCheckBox show_path_;
     UiCheckBox show_size_;
     UiCheckBox show_date_;

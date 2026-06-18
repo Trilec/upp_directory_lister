@@ -590,7 +590,7 @@ void MainWindow::BuildUi()
                .SetMediaSide(UiAlign::LEFT)
                .SetMediaReserve(DPI(16));
     title_card_.ShowTitleLine(false).ShowCardLine(false).EnableHover(false).SetSelectable(false);
-    version_badge_.SetText("v0.12");
+    version_badge_.SetText("v0.2.0");
 
     source_label_.SetText("SOURCE DIRECTORY");
     source_edit_.SetPlaceholder("D:/projects/source");
@@ -679,6 +679,7 @@ void MainWindow::AddSidebarPages()
     setup.Add(dir_pattern_mode_);
     setup.Add(dir_case_sensitive_);
     setup.Add(setup_dir_pattern_);
+    setup.Add(filter_toggle_);
     setup.Add(size_threshold_label_);
     setup.Add(size_filter_toggle_);
     setup.Add(size_min_);
@@ -689,6 +690,7 @@ void MainWindow::AddSidebarPages()
     setup.Add(date_from_);
     setup.Add(date_to_);
     setup.Add(sort_label_);
+    setup.Add(sort_toggle_);
     setup.Add(sort_primary_);
     setup.Add(sort_secondary_);
     setup.Add(dir_placement_);
@@ -700,13 +702,20 @@ void MainWindow::AddSidebarPages()
     setup.Add(include_files_);
     setup.Add(show_hidden_);
     setup.Add(display_label_);
-    setup.Add(show_path_);
-    setup.Add(show_size_);
-    setup.Add(show_date_);
-    setup.Add(show_extension_);
+    setup.Add(view_grid_);
+    view_grid_.AddGrid(show_path_, 0, 0, false);
+    view_grid_.AddGrid(show_extension_, 0, 1, false);
+    view_grid_.AddGrid(show_date_, 0, 2, false);
+    view_grid_.AddGrid(show_size_, 0, 3, false);
+    view_grid_.AddGrid(include_dirs_, 1, 0, false);
+    view_grid_.AddGrid(include_files_, 1, 1, false);
+    view_grid_.AddGrid(show_hidden_, 1, 2, false);
+    view_grid_.SetGridSize(4, 2).SetInset(0).SetGap(DPI(4)).SetMinCellSize(Size(DPI(62), DPI(18)));
 
-    setup_file_pattern_label_.SetText("FILTER RULES");
+    setup_file_pattern_label_.SetText("FILTERING");
     setup_filter_hint_.SetText("File Pattern only filters files. Directory Pattern only filters directories.");
+    filter_toggle_.SetText("Enable").SetChecked(false);
+    filter_toggle_.WhenAction << [=] { filter_changed(); };
     file_pattern_mode_label_.SetText("File Mode");
     file_pattern_mode_.Add("Glob", (int)PatternMode::Glob)
                       .Add("Contains", (int)PatternMode::Contains)
@@ -750,7 +759,9 @@ void MainWindow::AddSidebarPages()
     date_from_.WhenAction << [=] { filter_changed(); };
     date_to_.WhenAction << [=] { filter_changed(); };
 
-    sort_label_.SetText("SORTING & STRUCTURE");
+    sort_label_.SetText("SORTING");
+    sort_toggle_.SetText("Enabled").SetChecked(true);
+    sort_toggle_.WhenAction << [=] { filter_changed(); };
     sort_primary_.Add("Primary: Name", (int)DirSortKey::Name)
                  .Add("Primary: Size", (int)DirSortKey::Size)
                  .Add("Primary: Date", (int)DirSortKey::Modified)
@@ -776,20 +787,20 @@ void MainWindow::AddSidebarPages()
     recursive_scan_.WhenAction << [=] { filter_changed(); };
     depth_label_.SetText("Depth");
     StyleEditField(depth_limit_);
-    depth_limit_.SetData(2);
+    depth_limit_.SetData(3);
     depth_limit_.WhenAction << [=] { filter_changed(); };
-    include_dirs_.SetText("Include Dirs").SetChecked(true);
+    include_dirs_.SetText("Dirs").SetChecked(true);
     include_dirs_.WhenAction << [=] { filter_changed(); };
-    include_files_.SetText("Include Files").SetChecked(true);
+    include_files_.SetText("Files").SetChecked(true);
     include_files_.WhenAction << [=] { filter_changed(); };
-    show_hidden_.SetText("Show Hidden");
+    show_hidden_.SetText("Hidden");
     show_hidden_.WhenAction << [=] { filter_changed(); };
 
-    display_label_.SetText("DISPLAY OPTIONS");
-    show_path_.SetText("Path").SetChecked(true);
-    show_size_.SetText("Size").SetChecked(true);
-    show_date_.SetText("Date").SetChecked(true);
-    show_extension_.SetText("Ext");
+    display_label_.SetText("VIEW");
+    show_path_.SetText("Path").SetChecked(false);
+    show_extension_.SetText("Ext").SetChecked(true);
+    show_date_.SetText("Date").SetChecked(false);
+    show_size_.SetText("Size").SetChecked(false);
     scan_filter_badge_.SetText("ON");
 
     ParentCtrl& rename = rename_page_;
@@ -1051,6 +1062,8 @@ void MainWindow::ApplyTheme()
     transfer_conflict_.SetCustomStyle(MakeDropdownStyle());
 
     UiCheckBox::Style check_style = MakeCheckStyle();
+    filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
+    sort_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
     size_filter_toggle_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
     file_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
     dir_case_sensitive_.SetVisual(UICHECKVIS_CLASSIC).SetCustomStyle(check_style).SetSizeMin(0, DPI(20));
@@ -1194,7 +1207,30 @@ void MainWindow::LayoutSetupPage()
     int y = m;
     int w = max(DPI(280), setup_page_.GetSize().cx - DPI(28));
 
+    display_label_.SetRect(m, y, w, DPI(14));
+    y += DPI(18);
+    view_grid_.SetRect(m, y, w, DPI(42));
+    y += DPI(58);
+
+    sort_label_.SetRect(m, y, w, DPI(14));
+    sort_toggle_.SetRect(m + w - DPI(84), y - DPI(2), DPI(84), DPI(18));
+    y += DPI(18);
+    int half = (w - DPI(8)) / 2;
+    sort_primary_.SetRect(m, y - DPI(2), half, DPI(28));
+    sort_secondary_.SetRect(m + half + DPI(8), y - DPI(2), half, DPI(28));
+    y += DPI(34);
+    int left_col = (w - DPI(8)) / 2;
+    int right_col = w - left_col - DPI(8);
+    reverse_sort_.SetRect(m, y, left_col, DPI(18));
+    recursive_scan_.SetRect(m + left_col + DPI(8), y, right_col, DPI(18));
+    y += DPI(24);
+    depth_label_.SetRect(m, y + DPI(1), DPI(38), DPI(14));
+    depth_limit_.SetRect(m + DPI(42), y - DPI(2), DPI(42), DPI(24));
+    dir_placement_.SetRect(m + DPI(96), y - DPI(2), w - DPI(96), DPI(28));
+    y += DPI(42);
+
     setup_file_pattern_label_.SetRect(m, y, w, DPI(14));
+    filter_toggle_.SetRect(m + w - DPI(70), y - DPI(2), DPI(70), DPI(18));
     y += DPI(18);
     setup_filter_hint_.SetRect(m, y, w, DPI(24));
     y += DPI(26);
@@ -1224,40 +1260,9 @@ void MainWindow::LayoutSetupPage()
     date_range_label_.SetRect(m, y, DPI(120), DPI(14));
     date_filter_toggle_.SetRect(m + w - DPI(70), y - DPI(2), DPI(70), DPI(18));
     y += DPI(20);
-    int half = (w - DPI(8)) / 2;
+    half = (w - DPI(8)) / 2;
     date_from_.SetRect(m, y, half, DPI(24));
     date_to_.SetRect(m + half + DPI(8), y, half, DPI(24));
-    y += DPI(36);
-
-    sort_label_.SetRect(m, y, w, DPI(14));
-    y += DPI(18);
-    half = (w - DPI(8)) / 2;
-    sort_primary_.SetRect(m, y - DPI(2), half, DPI(28));
-    sort_secondary_.SetRect(m + half + DPI(8), y - DPI(2), half, DPI(28));
-    y += DPI(34);
-
-    int left_col = (w - DPI(8)) / 2;
-    int right_col = w - left_col - DPI(8);
-    recursive_scan_.SetRect(m, y, DPI(128), DPI(18));
-    depth_label_.SetRect(m + DPI(132), y + DPI(1), DPI(34), DPI(14));
-    depth_limit_.SetRect(m + DPI(166), y - DPI(2), DPI(42), DPI(24));
-    y += DPI(24);
-    include_dirs_.SetRect(m, y, left_col, DPI(18));
-    include_files_.SetRect(m + left_col + DPI(8), y, right_col, DPI(18));
-    y += DPI(24);
-    show_hidden_.SetRect(m, y, left_col, DPI(18));
-    reverse_sort_.SetRect(m + left_col + DPI(8), y, right_col, DPI(18));
-    y += DPI(28);
-    dir_placement_.SetRect(m, y - DPI(2), w, DPI(28));
-    y += DPI(38);
-
-    display_label_.SetRect(m, y, w, DPI(14));
-    y += DPI(18);
-    int cell = (w - DPI(12)) / 4;
-    show_path_.SetRect(m, y, cell, DPI(18));
-    show_size_.SetRect(m + cell + DPI(4), y, cell, DPI(18));
-    show_date_.SetRect(m + (cell + DPI(4)) * 2, y, cell, DPI(18));
-    show_extension_.SetRect(m + (cell + DPI(4)) * 3, y, cell, DPI(18));
 }
 
 void MainWindow::LayoutRenamePage()
@@ -1386,6 +1391,8 @@ DirectoryScanSettings MainWindow::ReadSettings() const
     s.include_files = include_files_.IsChecked();
     s.show_hidden = show_hidden_.IsChecked();
     s.reverse_sort = reverse_sort_.IsChecked();
+    s.enable_sorting = sort_toggle_.IsChecked();
+    s.enable_filtering = filter_toggle_.IsChecked();
     s.enable_size_filter = size_filter_toggle_.IsChecked();
     s.min_size = (int)size_min_.GetData();
     s.max_size = (int)size_max_.GetData();
@@ -1468,6 +1475,8 @@ void MainWindow::SetOutputReport(const String& text)
 
 bool MainWindow::HasActiveScanFilter() const
 {
+    if(!filter_toggle_.IsChecked())
+        return false;
     return !TrimBoth(setup_file_pattern_.GetData().ToString()).IsEmpty()
         || !TrimBoth(setup_dir_pattern_.GetData().ToString()).IsEmpty()
         || file_case_sensitive_.IsChecked()
@@ -1475,12 +1484,7 @@ bool MainWindow::HasActiveScanFilter() const
         || (int)file_pattern_mode_.GetSelectedData() != (int)PatternMode::Glob
         || (int)dir_pattern_mode_.GetSelectedData() != (int)PatternMode::Glob
         || size_filter_toggle_.IsChecked()
-        || date_filter_toggle_.IsChecked()
-        || show_hidden_.IsChecked()
-        || !recursive_scan_.IsChecked()
-        || (int)depth_limit_.GetData() != 2
-        || !include_dirs_.IsChecked()
-        || !include_files_.IsChecked();
+        || date_filter_toggle_.IsChecked();
 }
 
 void MainWindow::UpdateFilterIndicator()
