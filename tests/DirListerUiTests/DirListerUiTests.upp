@@ -1,0 +1,10 @@
+uses Core, Draw, CtrlCore, CtrlLib, Ui, plugin/png;
+file
+    main.cpp,
+    ../../DirLister/AppInfo.cpp,
+    ../../DirLister/DirectoryEngine.cpp,
+    ../../DirLister/MainWindow.cpp,
+    ../../DirLister/DirListerTheme.cpp,
+    ../../DirLister/RenameEngine.cpp;
+mainconfig
+    "" = "GUI";

@@ -1,177 +1,192 @@
-# DirLister
+# DirLister 1.0.0
 
-DirLister is a desktop tool for exploring a directory, filtering what you see, generating clean listings, previewing batch rename rules, and copying matching files to another location.
+A native Windows desktop tool for filtering a directory, generating readable
+listings, previewing batch renames, and copying the selected files and folders.
+Built with U++ and `upp_Ui`.
 
-It is built with U++ and the newer `upp_Ui` controls.
+![DirLister application snapshot](design/SnapShot_DirectoryLister.jpg)
 
-![DirLister application snapshot](./DirLister_snapshot.jpg)
+## Run
 
-## What DirLister Is Useful For
+Launch [bin/windows-x64/DirLister.exe](bin/windows-x64/DirLister.exe).
+This folder contains the latest Windows x64 Release build.
 
-- creating a clean file or folder inventory for a project or archive
-- listing only the files you care about, using patterns and filters
-- previewing rename rules before applying them
-- copying matching files into a backup, export, or staging directory
-- producing output that is easy to read or paste into notes, tickets, or documentation
+## Repository layout
 
-## Main Features
+| Folder | Contents |
+| --- | --- |
+| `bin/windows-x64` | Latest application executable |
+| `DirLister` | Main U++ package and C++ source |
+| `docs` | Development guidance |
+| `design` | Screenshots and design references |
+| `tests` | Focused engine and native UI regression packages |
 
-- source directory selection
-- file and directory pattern filtering
-- pattern modes: `Glob` and `Contains`
-- recursive scanning with depth control
-- size and date filtering
-- flexible sorting and directory placement
-- text, CSV, and JSON output
-- rename process stack with live preview
-- transfer/copy workflow with conflict handling
-- built-in Help dialog with examples and usage notes
+Compiler caches, fixtures, test executables and temporary reports belong in the
+system temporary directory, outside the checkout.
 
-## Quick Start
+## Quick start
 
-1. Choose a `Source Directory`.
-2. Open `Scan Filter` and set any file patterns, directory patterns, or filters you want.
-3. Click `Generate List` to preview the current result.
-4. If needed, switch to `Rename` or `Transfer` to work on the filtered set.
+1. Choose a **Source Directory**.
+2. In **Filter**, choose a process, fill its parameters, and click **Add**.
+3. Scroll below the stack to set View, Sorting and Depth.
+4. Click **Generate List**, and choose Text, Tree, CSV or JSON output.
+5. Use **Rename** or **Transfer** when you want to act on that selection.
 
-## Scan Filter
+**Help** opens a scrolling guide with step-by-step filter and rename recipes.
+Generate List is a preview. Apply Rename and Apply Transfer ask for confirmation
+before making filesystem changes.
 
-The `Scan Filter` page controls what the app looks at.
+## Two stacks, one workflow
 
-You can use it to:
+The Filter stack chooses entries; the Rename stack transforms their names.
+Both use a process dropdown, process-specific parameters, **Add**, **Save**,
+**Delete**, and row handles for drag reordering. Select a row to edit it and Save
+before applying; changing parameters alone does not replace the saved step.
+Steps run from top to bottom. Rename and Transfer share the filtered working set.
 
-- limit which files are included with file patterns such as `*.cpp;*.h;*.md`
-- limit which folders are included with directory patterns such as `src*;docs*`
-- choose whether matching is `Glob` based or simple `Contains` text matching
-- optionally enable `Case Sensitive` matching
-- restrict results by size or modification date
-- control recursive scanning depth
-- change sort order and how directories are grouped
-- choose which fields appear in the output
+## Filter processes
 
-The main point of this page is that it defines the working set for the rest of the tool.
+| Process | Purpose |
+| --- | --- |
+| Name matches glob / excludes glob | Include or exclude wildcard patterns |
+| Name contains / doesn't contain | Include or exclude substring matches |
+| First N matches / parent | Sample matching siblings under each parent |
+| Size range / Outside size range | Select file sizes inside or outside bounds |
+| Modified date range / Outside modified date range | Select dates inside or outside bounds |
 
-## Generate a Listing
+Each step can target Files, Directories, or both, with an optional **Level**:
+0 applies at every level, 1 to source children, 2 to their children, and so on.
+Size steps always target files; folder sizes are not measured. Name processes
+support case sensitivity. First N supports Glob or Contains and a **Keep** count.
+Adding a step enables filtering; the Enable checkbox can bypass the entire stack.
 
-Use `Generate List` when you want a readable or exportable view of the current scan result.
+Glob uses `*` for any sequence and `?` for one character. Separate alternatives
+with `;`, such as `*.jpg;*.png`. Empty patterns match all names. Positive steps
+intersect the current selection. Negative name steps prune matching directory
+branches. Size/date steps filter entries without pruning branches, since children
+have independent metadata. Zero size bounds and blank dates are unlimited; date
+bounds are inclusive. Reversed ranges are normalized and unknown dates unaffected.
 
-Available output modes:
+### Example: sample a large shot archive
 
-- `Text Output`: easy to read and easy to paste elsewhere
-- `CSV Output`: useful for spreadsheets or post-processing
-- `JSON Output`: useful for tooling or structured export
+For `I:/archive/fbb/BB_job/prod/work`, select Dirs and clear Files under View.
+Enable recursion, set Depth 2, choose name sorting and **Tree Output**.
+Add **First N matches / parent** with Directories, Glob `BB_*`, Level 0, Keep 3.
+This keeps three matching folders per parent, their selected children, and other
+folder names. Keep 1 samples a single matching folder. Keep 0 skips matches.
 
-If you enable path, size, date, or extension display, those values are added to each line of the generated result.
+To sample just one numeric shot folder inside each selected `BB_*` folder, add
+another First N step with Directories, Glob `*`, Level 3, Keep 1.
+Place exclusions before First N to fill its slots from eligible names. Exclusions
+after First N remove entries from the sample already chosen. Sorting controls
+which matches count as first; reverse sorting reverses that choice.
 
-## Rename
+### Example: recent images without temporary names
 
-The `Rename` page lets you build a stack of rename processes and preview the result before applying it.
+Add these Files steps in order:
 
-Supported process types include:
+1. Name matches glob: `*.jpg;*.png`.
+2. Name doesn't contain: `temp;backup`.
+3. Size range: Min 1, Max 0, unit MB.
+4. Modified date range: From 2026-01-01, To blank.
 
-- Search & Replace
-- Case Transform
-- Alphanumeric Only
-- Numbering
-- Prefix
-- Extension Replace
-- Insert Left
-- Insert Right
+Only images of at least 1 MB, modified on or after that date, without temp/backup
+in their names remain. To take three eligible images per parent, add First N last
+with Files, Glob `*`, Keep 3.
 
-Typical workflow:
+## Depth and output
 
-1. Choose a process.
-2. Fill in its parameters.
-3. Click `Add` to place it into the stack.
-4. Reorder the stack by dragging rows.
-5. Review the preview.
-6. Click `Apply Rename` when you are satisfied.
+Depth counts extra levels below source children: 0 lists immediate children,
+1 lists two levels, and 2 lists three levels. With recursion off, only source
+children appear. Hidden includes hidden entries.
 
-Notes:
+- **Text** uses relative paths to distinguish identical names in different branches.
+- **Tree** groups parents and children with ASCII line art. Filtered ancestors
+  marked `[context]` are display context, not selected rename/transfer entries.
+- **CSV** and **JSON** support spreadsheets and structured exports.
 
-- the rename preview uses entries from the active source directory
-- rename applies to eligible entries in that source directory
-- it is best to preview carefully before applying extension or numbering rules
+Path, Ext, Date and Size control display fields. Linux Slashes changes separators.
+Copy Output copies the complete report. Large listings scroll through every row.
+The scan is currently synchronous; Abort does not interrupt a running scan yet.
+
+## Rename processes and examples
+
+Processes include Search & Replace, Case Transform, Alphanumeric Only, Numbering,
+Prefix, Extension Replace, Insert Left, and Insert Right. The preview samples
+current filtered entries; sample input tests a name independently. Preview count
+limits examples, not the full set that Apply Rename will operate on.
+
+### Example: clean image names and add a project prefix
+
+Filter Files with Name matches glob `*.jpg;*.png`, then Generate List to check the
+selection. Remove unwanted existing Rename steps and add these in order:
+
+1. Search & Replace: Find a space, Replace `_`.
+2. Case Transform: lower.
+3. Prefix: `project_`.
+
+`My Image.JPG` becomes `project_my_image.jpg`. Save any edits, review several
+samples, then Apply Rename and confirm. Extension Replace changes the filename;
+it does not convert file contents to another format.
+
+### Example: number a token
+
+Filter Files with Name contains `TOKEN`. Add Numbering with Find `TOKEN`, Pattern
+`####`, Start 1. With name sorting enabled, the first selected `shot_TOKEN.exr`
+becomes `shot_0001.exr`; subsequent entries use 0002, 0003, and so on. Names without
+the token are unchanged. Existing-name collisions can receive a numeric suffix.
+
+### Example: understand rename order
+
+Prefix `Project_` followed by lower case produces `project_myfile.txt`.
+Lower case followed by Prefix `Project_` produces `Project_myfile.txt`.
+Drag rows to choose the result and inspect the preview before applying.
+
+For a combined workflow, Filter Files by `*.exr` and exclude Contains `temp`,
+Generate List, then Rename with Prefix `final_`. The Filter stack chooses the
+entries and the Rename stack changes their names. Inspect the full listing,
+not just the small preview sample, before confirming.
 
 ## Transfer
 
-The `Transfer` page copies matching files and folders into a target directory.
-
-Options include:
-
-- preserve the original folder tree
-- flatten files into a single destination level
-- verify copied files after transfer
-- choose how file conflicts are handled
-
-Conflict handling modes:
-
-- `Auto-Increment`: creates a new target name when a file already exists
-- `Overwrite Existing`: replaces the existing target file
-- `Skip Existing`: leaves existing target files untouched
-
-Typical workflow:
-
-1. Choose the target directory.
-2. Decide whether to preserve the tree or flatten the files.
-3. Choose the conflict policy.
-4. Click `Apply Transfer` and confirm.
-
-## Help
-
-Use the top-bar `Help` button for an in-app guide covering:
-
-- listing generation
-- rename workflow
-- transfer workflow
-- preview and apply flow
-- practical examples
-
-## Notes
-
-- `Linux Slashes` changes the visible path style for easier copy/paste into tools and docs.
-- `Generate List` is safe and preview-oriented.
-- `Apply Rename` and `Apply Transfer` perform real filesystem operations and ask for confirmation first.
+Choose a target and Preserve Tree or Flatten Files. Auto-Increment keeps existing
+files and chooses a new name; Overwrite Existing replaces them; Skip Existing
+leaves them untouched. Verification compares copied content. Apply Transfer
+confirms the target and planned entry count, then writes a report to the output.
 
 ## Build
 
-Package file:
+The main package is `DirLister/DirLister.upp`. `GitHubOut.var` records this
+workstation's nests and a temporary compiler output directory. Adjust dependency
+paths for another workstation; the required packages are Core, Draw, CtrlCore,
+CtrlLib and Ui (with its Animation dependency).
 
-- `DirLister/DirLister.upp`
-
-Local U++ workspace file:
-
-- `GitHubOut.var`
-
-Current local nest used for builds:
-
-- `E:/apps/github/upp_directory_lister`
-- `E:/apps/github/upp_Ui`
-- `E:/apps/github/upp_AnimationEasing`
-- `E:/upp-18468/uppsrc`
-
-Required U++ packages:
-
-- `Core`
-- `Draw`
-- `CtrlCore`
-- `CtrlLib`
-- `Ui`
-
-Local output directory used by this repo:
-
-- `E:\apps\github\upp_directory_lister\out`
-
-Typical local build command:
+Run from the repository root:
 
 ```powershell
-& "E:\upp-18468\umk.exe" "E:\apps\github\upp_directory_lister,E:\apps\github\upp_Ui,E:\apps\github\upp_AnimationEasing,E:\upp-18468\uppsrc" "DirLister" "CLANGx64" "--out-dir" "E:\apps\github\upp_directory_lister\out" "-br" "+GUI" "E:\apps\github\upp_directory_lister\out\DirLister.exe"
+$repoPath = (Get-Location).Path
+$nests = "$repoPath,E:/apps/github/upp_Ui,E:/apps/github/upp_animation,E:/upp-18468/uppsrc"
+$cachePath = Join-Path $env:TEMP 'DirLister-umk'
+New-Item -ItemType Directory -Force bin/windows-x64 | Out-Null
+& E:/upp-18468/umk.exe $nests DirLister CLANGx64 --out-dir $cachePath -br +GUI "$repoPath/bin/windows-x64/DirLister.exe"
+if ($LASTEXITCODE) { throw 'Build failed' }
 ```
 
-Build notes:
+`bin/windows-x64` stays limited to the application; UMK intermediates live in the
+external cache. Debug and Release BLITZ builds are supported and verified here.
 
-- Build the `DirLister` package, not a different package name.
-- Make sure the local `out` directory exists before building.
-- Emit the executable directly into `out`, not a nested subfolder.
-- If `umk` reports missing packages, verify the nest includes both `upp_Ui` and `E:\upp-18468\uppsrc`.
-- `GitHubOut.var` is the local reference for the expected package nest and output setup.
+## Regression checks
+
+The useful checks are grouped under `tests`, with generated output in
+`$env:TEMP/DirLister-tests`. Build `tests/DirListerTests` and run it first; it creates
+the fixtures and checks depth, sorting, names, sizes, dates, tree output and limits.
+Then build `tests/DirListerUiTests` to check large-list scrolling, draft isolation,
+Add/Save/Delete and drag reorder using the actual native controls.
+
+Use the same nests and external cache as above, with output paths in the temporary
+directory rather than `bin`. Native checks run without a visible application
+window and save their report and control renders alongside the temporary fixtures.
+The optional archive scan is read-only. Live keyboard/mouse acceptance remains a
+separate check from native rendering and control-state validation.
+
+See [CHANGELOG.md](CHANGELOG.md) for dated releases.

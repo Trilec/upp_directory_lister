@@ -2,3 +2,6 @@
 /MOCKUP_DESIGN
 /UPP_GUIDES
 /out
+/build/
+*.pdb
+/build

@@ -44,6 +44,15 @@ private:
     void HandleGenerate();
     void HandleAbort();
     void HandleHelp();
+    void RefreshFilterStack();
+    void RefreshFilterFields();
+    void HandleFilterSelection();
+    void HandleFilterFieldsChanged();
+    void HandleFilterAdd();
+    void HandleFilterSave();
+    void HandleFilterRemove();
+    void HandleFilterMove(int from, int before);
+    ScanFilterRule ReadFilterFields() const;
     void HandleApplyRename();
     void HandleApplyTransfer();
 
@@ -63,7 +72,7 @@ private:
     void RefreshRenamePreview();
     void HandleRenameAdd();
     void HandleRenameRemove();
-    void HandleRenameMove(int delta);
+    void HandleRenameReorder(int from, int before);
     void HandleRenameSelection();
     void HandleRenameFieldsChanged();
     Vector<String> CollectRenameSamples(Index<String>& existing_names) const;
@@ -92,31 +101,30 @@ private:
     int active_page_ = 0;
 
     // Page containers hosted inside the left sidebar.
+    UiScrollPanel setup_scroll_;
     ParentCtrl setup_page_;
     ParentCtrl rename_page_;
     ParentCtrl transfer_page_;
 
     // Setup page controls.
-    UiLabel setup_file_pattern_label_;
-    UiLabel setup_filter_hint_;
-    UiLabel file_pattern_mode_label_;
-    UiDropdown file_pattern_mode_;
-    UiCheckBox file_case_sensitive_;
-    UiLineEdit setup_file_pattern_;
-    UiLabel dir_pattern_mode_label_;
-    UiDropdown dir_pattern_mode_;
-    UiCheckBox dir_case_sensitive_;
-    UiLineEdit setup_dir_pattern_;
-    UiCheckBox filter_toggle_;
-    UiLabel size_threshold_label_;
-    UiCheckBox size_filter_toggle_;
-    EditInt size_min_;
-    EditInt size_max_;
-    UiDropdown size_unit_;
-    UiLabel date_range_label_;
-    UiCheckBox date_filter_toggle_;
-    DropDate date_from_;
-    DropDate date_to_;
+    UiLabel filter_operator_label_, filter_params_label_, filter_steps_label_, filter_hint_;
+    UiDropdown filter_type_, filter_target_, filter_match_mode_;
+    UiLabel filter_level_label_, filter_limit_label_;
+    UiLineEdit filter_pattern_;
+    EditInt filter_level_, filter_limit_;
+    UiCheckBox filter_case_, filter_toggle_;
+    EditDouble filter_size_min_, filter_size_max_;
+    UiDropdown filter_size_unit_;
+    UiLabel filter_range_hint_;
+    DropDate filter_date_from_, filter_date_to_;
+    UiButton filter_save_button_;
+    UiToolButton filter_add_button_, filter_remove_button_;
+    UiPanel filter_stack_panel_;
+    UiListModel filter_stack_model_; // outlives its bound view
+    UiList filter_stack_;
+    Vector<ScanFilterRule> filter_rules_;
+    int filter_selected_ = -1;
+    bool filter_ui_syncing_ = false, filter_dirty_ = false;
     UiLabel sort_label_;
     UiCheckBox sort_toggle_;
     UiDropdown sort_primary_;
@@ -186,8 +194,7 @@ private:
     UiLabel state_label_;
     UiToolButton output_copy_button_;
     UiLabel output_copy_label_;
-    UiScrollPanel output_scroll_panel_;
-    UiLabel output_edit_;
+    LineEdit output_edit_;
     UiLabel footer_meta_;
     UiLabel footer_path_;
 };

@@ -9,6 +9,8 @@ uses
 
 file
 	main.cpp,
+	AppInfo.h,
+	AppInfo.cpp,
 	DirectoryEngine.h,
 	DirectoryEngine.cpp,
 	DirListerTheme.h,
@@ -20,4 +22,3 @@ file
 
 mainconfig
 	"" = "GUI";
-
