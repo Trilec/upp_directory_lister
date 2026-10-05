@@ -21,8 +21,9 @@ The stacks run from top to bottom, so order can change the result.
 Changing fields alone does not replace a saved step. Save edits before applying.
 
 FILTER STACK
-Each step selects Files, Directories, or Files + directories. The Level field
-limits that step to a directory level: 0 means any level, 1 means source children,
+Each step selects Files, Directories, or Files + directories. The Apply at level field
+controls only where that step applies, not how far scanning goes.
+It limits that step to a directory level: 0 means any level, 1 means source children,
 2 means their children, and so on. Add enables filtering. The Enable checkbox
 bypasses the whole Filter stack when switched off.
 
@@ -32,7 +33,8 @@ Name contains: keep names containing the supplied text.
 Name doesn't contain: remove matching names and skip matching folder branches.
 For name steps, separate alternatives with semicolons, for example *.jpg;*.png.
 Several positive steps intersect: each applicable step must pass. Matching is
-case insensitive unless Case sensitive is checked. Empty name patterns match all.
+case insensitive unless Case is checked. Case means case-sensitive name matching.
+Empty name patterns match all.
 
 First N matches / parent: keep N matching siblings under each parent. Choose
 Glob or Contains and set Keep. Excess matching folder branches are skipped;
@@ -48,7 +50,8 @@ size/date bounds are normalized. Entries with unknown dates are unaffected.
 Size/date steps do not prune folder branches: children have independent metadata.
 
 VIEW, DEPTH AND OUTPUT
-Scroll below the Filter stack for View, Sorting, and Depth settings. Select Dirs,
+Scan depth limit and Recursive are below Location History, above the tabs.
+Scroll below the Filter stack for View and Sorting settings. Select Dirs,
 Files, or both; Hidden includes hidden entries. Depth counts extra levels below
 source children: depth 0 lists immediate children, depth 1 lists two levels,
 and depth 2 lists three levels. With recursion off, only source children appear.
@@ -62,12 +65,12 @@ Copy Output copies the complete report, including entries beyond the visible are
 
 FILTER EXAMPLE: SHOW A FEW SHOTS FROM A LARGE ARCHIVE
 Choose I:/archive/fbb/BB_job/prod/work. Under View select Dirs and clear Files.
-Enable recursion, set depth 2, and choose name sorting and Tree Output.
-Add First N matches / parent: Directories, Glob BB_*, Level 0, Keep 3.
+Enable recursion, set Scan depth limit 2, and choose name sorting and Tree Output.
+Add First N matches / parent: Directories, Glob BB_*, Apply at level 0, Keep 3.
 Generate List. You see three BB_* folders per parent and their selected children,
 plus folders whose names do not match BB_*. Set Keep 1 for a single sample.
 To sample numeric shot folders within each selected BB_* folder, add another
-First N step: Directories, Glob *, Level 3, Keep 1. It limits that level only.
+First N step: Directories, Glob *, Apply at level 3, Keep 1. It limits that level only.
 
 FILTER EXAMPLE: RECENT IMAGES, EXCLUDING TEMPORARY NAMES
 Add these steps in order, all targeting Files:

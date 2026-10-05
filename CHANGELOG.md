@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.1 - 2026-10-05
+
+- Moved Scan depth limit and Recursive below Location History so traversal controls remain visible on every tab.
+- Renamed the filter's Level to Apply at level, with a visible explanation that 0 applies at all levels.
+- Matched the filter stack height to Rename and placed Case beside the name pattern.
+- Added scrolling to Rename and Transfer and increased the initial window height by 30 pixels.
+- Updated Help and README to distinguish traversal depth from rule scope.
+
 ## v1.0.0 - 2026-10-04
 
 - Added an inline filter process stack with Add, Save, Delete and drag reorder, matching the Rename workflow.

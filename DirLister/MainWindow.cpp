@@ -242,7 +242,7 @@ MainWindow::MainWindow()
 {
     Title(String("DirLister Pro ") + DIRLISTER_VERSION);
     Sizeable().Zoomable();
-    SetRect(0, 0, DPI(1280), DPI(760));
+    SetRect(0, 0, DPI(1280), DPI(790));
 
     UiThemeContext ctx;
     ctx.preset = UiThemePreset::Pill;
@@ -279,8 +279,16 @@ void MainWindow::BuildUi()
     sidebar_panel_.Add(setup_scroll_);
     setup_scroll_.Content().Add(setup_page_);
     setup_scroll_.SetScrollMode(UIPANELSCROLL_VERTICAL);
-    sidebar_panel_.Add(rename_page_);
-    sidebar_panel_.Add(transfer_page_);
+    sidebar_panel_.Add(rename_scroll_);
+    rename_scroll_.Content().Add(rename_page_);
+    rename_scroll_.SetScrollMode(UIPANELSCROLL_VERTICAL);
+    sidebar_panel_.Add(transfer_scroll_);
+    transfer_scroll_.Content().Add(transfer_page_);
+    transfer_scroll_.SetScrollMode(UIPANELSCROLL_VERTICAL);
+    sidebar_panel_.Add(recursive_scan_);
+    sidebar_panel_.Add(depth_label_);
+    sidebar_panel_.Add(depth_limit_);
+    sidebar_panel_.Add(scan_depth_hint_);
 
     main_panel_.Add(generate_button_);
     main_panel_.Add(abort_button_);
@@ -394,6 +402,7 @@ void MainWindow::AddSidebarPages()
     setup.Add(filter_target_);
     setup.Add(filter_match_mode_);
     setup.Add(filter_level_label_);
+    setup.Add(filter_level_hint_);
     setup.Add(filter_limit_label_);
     setup.Add(filter_pattern_);
     setup.Add(filter_level_);
@@ -416,9 +425,6 @@ void MainWindow::AddSidebarPages()
     setup.Add(sort_secondary_);
     setup.Add(dir_placement_);
     setup.Add(reverse_sort_);
-    setup.Add(recursive_scan_);
-    setup.Add(depth_label_);
-    setup.Add(depth_limit_);
     setup.Add(include_dirs_);
     setup.Add(include_files_);
     setup.Add(show_hidden_);
@@ -445,8 +451,9 @@ void MainWindow::AddSidebarPages()
                   .Add("Files + directories", (int)FilterTarget::Both).Select(2);
     filter_match_mode_.Add("Glob", (int)PatternMode::Glob).Add("Contains", (int)PatternMode::Contains).Select(0);
     filter_pattern_.SetPlaceholder("Patterns separated by ; (e.g. BB_*;CC_*)");
-    filter_case_.SetText("Case sensitive");
-    filter_level_label_.SetText("Level"); filter_level_.Min(0).Max(100).SetData(0);
+    filter_case_.SetText("Case").Tip("Case-sensitive name matching");
+    filter_level_label_.SetText("Apply at level"); filter_level_.Min(0).Max(100).SetData(0);
+    filter_level_hint_.SetText("0 = all levels; 1 = source children");
     filter_limit_label_.SetText("Keep"); filter_limit_.Min(0).Max(1000000).SetData(3);
     StyleEditField(filter_level_); StyleEditField(filter_limit_);
     StyleEditField(filter_size_min_, "Min"); StyleEditField(filter_size_max_, "Max");
@@ -510,11 +517,14 @@ void MainWindow::AddSidebarPages()
     dir_placement_.WhenSelect << [=](int) { filter_changed(); };
     reverse_sort_.SetText("Reverse");
     reverse_sort_.WhenAction << [=] { filter_changed(); };
-    recursive_scan_.SetText("Recursive Scanning").SetChecked(true);
+    recursive_scan_.SetText("Recursive").SetChecked(true);
     recursive_scan_.WhenAction << [=] { filter_changed(); };
-    depth_label_.SetText("Depth");
+    depth_label_.SetText("Scan depth limit");
+    scan_depth_hint_.SetText("0 = source children; 2 = three levels");
     StyleEditField(depth_limit_);
     depth_limit_.SetData(3);
+    depth_limit_.Min(0);
+    depth_limit_.Tip("Maximum extra levels below source children. Limits traversal, not filter scope.");
     depth_limit_.WhenAction << [=] { filter_changed(); };
     include_dirs_.SetText("Dirs").SetChecked(true);
     include_dirs_.WhenAction << [=] { filter_changed(); };
@@ -650,6 +660,12 @@ void MainWindow::ApplyTheme()
     setup_scroll_.SetCustomStyle(MakeScrollPanelStyle());
     setup_scroll_.Transparent();
     setup_scroll_.Content().Transparent();
+    rename_scroll_.SetCustomStyle(MakeScrollPanelStyle());
+    rename_scroll_.Transparent();
+    rename_scroll_.Content().Transparent();
+    transfer_scroll_.SetCustomStyle(MakeScrollPanelStyle());
+    transfer_scroll_.Transparent();
+    transfer_scroll_.Content().Transparent();
     setup_page_.Transparent();
     rename_page_.Transparent();
     transfer_page_.Transparent();
@@ -681,6 +697,8 @@ void MainWindow::ApplyTheme()
     source_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     sort_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     depth_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    scan_depth_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
+    filter_level_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     display_label_.SetCustomStyle(MakeLabelStyle(BlueText(), UiLabelRole::Caption));
     rename_operator_label_.SetCustomStyle(MakeLabelStyle(GreenText(), UiLabelRole::Caption));
     rename_filter_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
@@ -847,7 +865,13 @@ void MainWindow::Layout()
     source_browse_.SetRect(x + full_w - DPI(24), y, DPI(24), DPI(28));
     y += DPI(34);
     source_history_.SetRect(x, y, full_w, DPI(28));
-    y += DPI(40);
+    y += DPI(36);
+    depth_label_.SetRect(x, y + DPI(4), DPI(104), DPI(18));
+    depth_limit_.SetRect(x + DPI(110), y, DPI(46), DPI(24));
+    recursive_scan_.SetRect(x + DPI(172), y + DPI(2), full_w - DPI(172), DPI(20));
+    y += DPI(28);
+    scan_depth_hint_.SetRect(x, y, full_w, DPI(16));
+    y += DPI(24);
     nav_panel_.SetRect(x, y, full_w, DPI(34));
     int nav_w = (full_w - DPI(8)) / 3;
     nav_setup_button_.SetRect(DPI(2), DPI(2), nav_w, DPI(30));
@@ -859,13 +883,17 @@ void MainWindow::Layout()
     int page_h = ss.cy - y - DPI(12);
     setup_scroll_.SetRect(x, y, full_w, max(0, page_h));
     setup_page_.SetRect(0, 0, full_w - DPI(16), DPI(760));
-    rename_page_.SetRect(x, y, full_w, page_h);
-    transfer_page_.SetRect(x, y, full_w, page_h);
+    rename_scroll_.SetRect(x, y, full_w, max(0, page_h));
+    rename_page_.SetRect(0, 0, full_w - DPI(16), DPI(760));
+    transfer_scroll_.SetRect(x, y, full_w, max(0, page_h));
+    transfer_page_.SetRect(0, 0, full_w - DPI(16), DPI(340));
 
     LayoutSetupPage();
     setup_scroll_.Layout();
     LayoutRenamePage();
     LayoutTransferPage();
+    rename_scroll_.Layout();
+    transfer_scroll_.Layout();
 
     Size ms = main_panel_.GetSize();
     int mx = DPI(14);
@@ -910,35 +938,37 @@ void MainWindow::LayoutSetupPage()
     filter_toggle_.SetRect(m + w - DPI(70), y - DPI(2), DPI(70), DPI(18));
     y += DPI(18);
     filter_type_.SetRect(m, y, w, DPI(28)); y += DPI(34);
-    filter_target_.SetRect(m, y, w - DPI(106), DPI(28));
-    filter_level_label_.SetRect(m + w - DPI(96), y + DPI(6), DPI(40), DPI(14));
+    filter_target_.SetRect(m, y, w - DPI(146), DPI(28));
+    filter_level_label_.SetRect(m + w - DPI(138), y + DPI(6), DPI(88), DPI(14));
     filter_level_.SetRect(m + w - DPI(48), y + DPI(2), DPI(48), DPI(24)); y += DPI(34);
+    filter_level_hint_.SetRect(m, y, w, DPI(14)); y += DPI(20);
     filter_params_label_.SetRect(m, y, w, DPI(14)); y += DPI(18);
-    filter_pattern_.SetRect(m, y, w, DPI(28));
+    filter_pattern_.SetRect(m, y, w - DPI(76), DPI(28));
+    filter_case_.SetRect(m + w - DPI(68), y + DPI(4), DPI(68), DPI(20));
     int third = (w - DPI(16)) / 3;
     filter_size_min_.SetRect(m, y, third, DPI(28));
     filter_size_max_.SetRect(m + third + DPI(8), y, third, DPI(28));
     filter_size_unit_.SetRect(m + 2 * (third + DPI(8)), y, third, DPI(28));
     filter_date_from_.SetRect(m, y, half, DPI(28));
     filter_date_to_.SetRect(m + half + DPI(8), y, half, DPI(28)); y += DPI(34);
-    filter_case_.SetRect(m, y + DPI(4), DPI(120), DPI(18));
-    filter_match_mode_.SetRect(m + DPI(120), y, DPI(80), DPI(28));
+    filter_match_mode_.SetRect(m, y, DPI(100), DPI(28));
     filter_limit_label_.SetRect(m + w - DPI(85), y + DPI(7), DPI(32), DPI(14));
     filter_limit_.SetRect(m + w - DPI(48), y + DPI(2), DPI(48), DPI(24));
-    filter_range_hint_.SetRect(m, y, w, DPI(28)); y += DPI(34);
-    filter_hint_.SetRect(m, y, w, DPI(36)); y += DPI(42);
+    filter_range_hint_.SetRect(m, y, w, DPI(28));
+    if(filter_match_mode_.IsShown() || filter_range_hint_.IsShown()) y += DPI(34);
+    filter_hint_.SetRect(m, y, w, DPI(28)); y += DPI(34);
     filter_save_button_.SetRect(m, y, third, DPI(28));
     filter_add_button_.SetRect(m + third + DPI(8), y, third, DPI(28));
     filter_remove_button_.SetRect(m + 2 * (third + DPI(8)), y, third, DPI(28)); y += DPI(40);
     filter_steps_label_.SetRect(m, y, w, DPI(14)); y += DPI(18);
-    filter_stack_panel_.SetRect(m, y, w, DPI(180));
-    filter_stack_.SetRect(DPI(1), DPI(1), w - DPI(2), DPI(178));
-    y += DPI(196);
+    filter_stack_panel_.SetRect(m, y, w, DPI(108));
+    filter_stack_.SetRect(DPI(1), DPI(1), w - DPI(2), DPI(106));
+    y += DPI(116);
 
     display_label_.SetRect(m, y, w, DPI(14));
     y += DPI(18);
     view_grid_.SetRect(m, y, w, DPI(42));
-    y += DPI(58);
+    y += DPI(50);
 
     sort_label_.SetRect(m, y, w, DPI(14));
     sort_toggle_.SetRect(m + w - DPI(84), y - DPI(2), DPI(84), DPI(18));
@@ -946,17 +976,10 @@ void MainWindow::LayoutSetupPage()
     sort_primary_.SetRect(m, y - DPI(2), half, DPI(28));
     sort_secondary_.SetRect(m + half + DPI(8), y - DPI(2), half, DPI(28));
     y += DPI(34);
-    int left_col = (w - DPI(8)) / 2;
-    int right_col = w - left_col - DPI(8);
-    reverse_sort_.SetRect(m, y, left_col, DPI(18));
-    recursive_scan_.SetRect(m + left_col + DPI(8), y, right_col, DPI(18));
-    y += DPI(24);
-    depth_label_.SetRect(m, y + DPI(1), DPI(38), DPI(14));
-    depth_limit_.SetRect(m + DPI(42), y - DPI(2), DPI(42), DPI(24));
+    reverse_sort_.SetRect(m, y + DPI(2), DPI(84), DPI(18));
     dir_placement_.SetRect(m + DPI(96), y - DPI(2), w - DPI(96), DPI(28));
     y += DPI(42);
-
-
+    setup_page_.SetRect(0, 0, setup_page_.GetSize().cx, y);
 }
 
 void MainWindow::LayoutRenamePage()
@@ -999,6 +1022,7 @@ void MainWindow::LayoutRenamePage()
     y += DPI(18);
     rename_preview_panel_.SetRect(m, y, w, DPI(150));
     rename_preview_view_.SetRect(DPI(1), DPI(1), rename_preview_panel_.GetSize().cx - DPI(2), rename_preview_panel_.GetSize().cy - DPI(2));
+    rename_page_.SetRect(0, 0, rename_page_.GetSize().cx, y + DPI(166));
 }
 
 void MainWindow::LayoutTransferPage()
@@ -1023,6 +1047,7 @@ void MainWindow::LayoutTransferPage()
     transfer_verify_hash_.SetRect(m, y, w, DPI(18));
     y += DPI(26);
     transfer_apply_button_.SetRect(m, y, w, DPI(28));
+    transfer_page_.SetRect(0, 0, transfer_page_.GetSize().cx, y + DPI(44));
 }
 
 void MainWindow::Paint(Draw& w)
@@ -1034,8 +1059,8 @@ void MainWindow::SetSidebarPage(int page)
 {
     active_page_ = minmax(page, 0, 2);
     setup_scroll_.Show(active_page_ == 0);
-    rename_page_.Show(active_page_ == 1);
-    transfer_page_.Show(active_page_ == 2);
+    rename_scroll_.Show(active_page_ == 1);
+    transfer_scroll_.Show(active_page_ == 2);
     nav_setup_button_.SetCustomStyle(MakeNavButtonStyle(BlueDark(), BlueText(), active_page_ == 0));
     nav_rename_button_.SetCustomStyle(MakeNavButtonStyle(GreenDark(), GreenText(), active_page_ == 1));
     nav_transfer_button_.SetCustomStyle(MakeNavButtonStyle(AmberDark(), AmberText(), active_page_ == 2));
@@ -1160,6 +1185,8 @@ void MainWindow::RefreshFilterFields()
     filter_target_.Enable(!size);
     filter_save_button_.Enable(filter_selected_ >= 0 && filter_dirty_);
     filter_remove_button_.Enable(filter_selected_ >= 0);
+    LayoutSetupPage();
+    setup_scroll_.Layout();
 }
 
 void MainWindow::HandleFilterFieldsChanged()

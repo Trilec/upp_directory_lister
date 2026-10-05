@@ -4,7 +4,7 @@
 #include <Core/Core.h>
 
 namespace Upp {
-inline constexpr const char* DIRLISTER_VERSION = "1.0.0";
+inline constexpr const char* DIRLISTER_VERSION = "1.0.1";
 String GetDirListerHelpText();
 }
 

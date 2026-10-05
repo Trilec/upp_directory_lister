@@ -48,6 +48,11 @@ void Snapshot(MainWindow& window, const char* path) {
     window.DrawCtrl(draw);
     PNGEncoder().SaveFile(path, (Image)draw);
 }
+UiScrollPanel* ScrollHost(Ctrl& child) {
+    for(Ctrl* c = child.GetParent(); c; c = c->GetParent())
+        if(auto* panel = dynamic_cast<UiScrollPanel*>(c)) return panel;
+    return nullptr;
+}
 
 GUI_APP_MAIN {
     MainWindow window;
@@ -61,7 +66,7 @@ GUI_APP_MAIN {
         String root = "I:/archive/fbb/BB_job/prod/work";
         if(!DirectoryExists(root)) root = AppendFileName(GetTempPath(), "DirLister-tests/scan-fixture");
         source->SetData(root);
-        auto* depth_label = Find<UiLabel>(window, "Depth");
+        auto* depth_label = Find<UiLabel>(window, "Scan depth limit");
         auto* depth = depth_label ? dynamic_cast<EditInt*>(depth_label->GetNext()) : nullptr;
         if(depth) depth->SetData(2);
         FilesOff(window);
@@ -84,7 +89,7 @@ GUI_APP_MAIN {
     }
     if(ok) {
         source->SetData(AppendFileName(GetTempPath(), "DirLister-tests/metadata-fixture"));
-        SetCheck(window, "Files", true); SetCheck(window, "Recursive Scanning", false);
+        SetCheck(window, "Files", true); SetCheck(window, "Recursive", false);
         auto* type = Dropdown(window, "Name matches glob");
         auto* target = Dropdown(window, "Files");
         auto* units = Dropdown(window, "B");
@@ -129,13 +134,15 @@ GUI_APP_MAIN {
         ok = ok && from_date->IsShown() && !minimum->IsShown() && !pattern->IsShown();
         add->WhenAction(); generate->WhenAction();
         ok = ok && stack->Model().GetCount() == 3 && output->GetData().ToString().Find("b10.txt") >= 0;
-        window.SetRect(0, 0, DPI(1280), DPI(760)); window.Layout();
+        window.SetRect(0, 0, DPI(1280), DPI(790)); window.Layout();
         auto* scroll_panel = Find<UiScrollPanel>(window);
         scroll_panel->SetScrollPos(Point(0, 0));
         Snapshot(window, AppendFileName(GetTempPath(), "DirLister-tests/filter-date-ui.png"));
         type->SelectByData(4); pattern->SetData("BB_*"); target->SelectByData(1); limit->SetData(3);
         ok = ok && pattern->IsShown() && !from_date->IsShown();
         Snapshot(window, AppendFileName(GetTempPath(), "DirLister-tests/filter-stack-ui.png"));
+        type->SelectByData(0);
+        Snapshot(window, AppendFileName(GetTempPath(), "DirLister-tests/filter-glob-ui.png"));
         report << (ok ? "PASS: inline mixed stack Add/Save/Delete/reorder and dynamic parameters\n"
                       : "FAIL: inline filter stack interactions\n");
     }
@@ -162,6 +169,22 @@ GUI_APP_MAIN {
                 && preview->GetData().ToString().Find("Project_myfile.txt") >= 0;
         report << (ok ? "PASS: rename drag reorder changes executed preview order\n"
                       : "FAIL: rename drag reorder execution\n");
+        FindUiButton(window, "RENAME")->WhenAction();
+        window.SetRect(0, 0, DPI(900), DPI(600)); window.Layout();
+        auto* scroll = ScrollHost(*panel);
+        scroll->SetScrollPos(Point(0, 100000));
+        ok = ok && scroll->GetScrollPos().y > 0
+                && scroll->GetScrollPos().y + scroll->GetViewportRect().Height() >= scroll->GetContentSize().cy;
+        Snapshot(window, AppendFileName(GetTempPath(), "DirLister-tests/rename-scroll-ui.png"));
+        FindUiButton(window, "TRANSFER")->WhenAction();
+        window.SetRect(0, 0, DPI(900), DPI(420)); window.Layout();
+        auto* apply = FindUiButton(window, "Apply Transfer");
+        scroll = ScrollHost(*apply);
+        scroll->SetScrollPos(Point(0, 100000));
+        ok = ok && scroll->GetScrollPos().y > 0
+                && scroll->GetScrollPos().y + scroll->GetViewportRect().Height() >= scroll->GetContentSize().cy;
+        report << (ok ? "PASS: Rename and Transfer scroll to their final controls in small windows\n"
+                      : "FAIL: sidebar scrolling\n");
     }
     report << (ok ? "PASS: native output loads all rows and scrolls to end at two window sizes\n"
                   : "FAIL: native output row/scroll checks\n");

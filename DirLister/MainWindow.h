@@ -102,6 +102,7 @@ private:
 
     // Page containers hosted inside the left sidebar.
     UiScrollPanel setup_scroll_;
+    UiScrollPanel rename_scroll_, transfer_scroll_;
     ParentCtrl setup_page_;
     ParentCtrl rename_page_;
     ParentCtrl transfer_page_;
@@ -110,6 +111,7 @@ private:
     UiLabel filter_operator_label_, filter_params_label_, filter_steps_label_, filter_hint_;
     UiDropdown filter_type_, filter_target_, filter_match_mode_;
     UiLabel filter_level_label_, filter_limit_label_;
+    UiLabel filter_level_hint_, scan_depth_hint_;
     UiLineEdit filter_pattern_;
     EditInt filter_level_, filter_limit_;
     UiCheckBox filter_case_, filter_toggle_;

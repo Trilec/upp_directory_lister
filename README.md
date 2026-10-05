@@ -1,4 +1,4 @@
-# DirLister 1.0.0
+# DirLister 1.0.1
 
 A native Windows desktop tool for filtering a directory, generating readable
 listings, previewing batch renames, and copying the selected files and folders.
@@ -28,7 +28,7 @@ system temporary directory, outside the checkout.
 
 1. Choose a **Source Directory**.
 2. In **Filter**, choose a process, fill its parameters, and click **Add**.
-3. Scroll below the stack to set View, Sorting and Depth.
+3. Set **Scan depth limit** below Location History; View and Sorting sit below the stack.
 4. Click **Generate List**, and choose Text, Tree, CSV or JSON output.
 5. Use **Rename** or **Transfer** when you want to act on that selection.
 
@@ -54,10 +54,13 @@ Steps run from top to bottom. Rename and Transfer share the filtered working set
 | Size range / Outside size range | Select file sizes inside or outside bounds |
 | Modified date range / Outside modified date range | Select dates inside or outside bounds |
 
-Each step can target Files, Directories, or both, with an optional **Level**:
+Each step can target Files, Directories, or both, with an optional **Apply at level**:
 0 applies at every level, 1 to source children, 2 to their children, and so on.
+Apply at level controls only where that rule runs; it does not limit traversal.
+**Scan depth limit**, above the tabs, controls how far the scanner goes.
 Size steps always target files; folder sizes are not measured. Name processes
-support case sensitivity. First N supports Glob or Contains and a **Keep** count.
+support case sensitivity through the **Case** checkbox beside the pattern.
+First N supports Glob or Contains and a **Keep** count.
 Adding a step enables filtering; the Enable checkbox can bypass the entire stack.
 
 Glob uses `*` for any sequence and `?` for one character. Separate alternatives
@@ -70,13 +73,13 @@ bounds are inclusive. Reversed ranges are normalized and unknown dates unaffecte
 ### Example: sample a large shot archive
 
 For `I:/archive/fbb/BB_job/prod/work`, select Dirs and clear Files under View.
-Enable recursion, set Depth 2, choose name sorting and **Tree Output**.
-Add **First N matches / parent** with Directories, Glob `BB_*`, Level 0, Keep 3.
+Enable recursion, set Scan depth limit 2, choose name sorting and **Tree Output**.
+Add **First N matches / parent** with Directories, Glob `BB_*`, Apply at level 0, Keep 3.
 This keeps three matching folders per parent, their selected children, and other
 folder names. Keep 1 samples a single matching folder. Keep 0 skips matches.
 
 To sample just one numeric shot folder inside each selected `BB_*` folder, add
-another First N step with Directories, Glob `*`, Level 3, Keep 1.
+another First N step with Directories, Glob `*`, Apply at level 3, Keep 1.
 Place exclusions before First N to fill its slots from eligible names. Exclusions
 after First N remove entries from the sample already chosen. Sorting controls
 which matches count as first; reverse sorting reverses that choice.
