@@ -1,2 +1,2 @@
-UPP = "E:/apps/github/upp_directory_lister;E:/apps/github/upp_Ui;E:/apps/github/upp_animation;E:/upp-18468/uppsrc";
+UPP = "E:/apps/github/upp_directory_lister;E:/apps/github/upp_Ui;E:/apps/github/upp_animation;E:/apps/github/upp_render/render;E:/upp-18468/uppsrc";
 OUTPUT = "C:/Users/admin/AppData/Local/Temp/DirLister-umk";

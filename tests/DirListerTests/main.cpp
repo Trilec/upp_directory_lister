@@ -113,9 +113,6 @@ CONSOLE_APP_MAIN {
     Check(SetFileTime(AppendFileName(metadata_root, "a1.txt"), TimeToFileTime(Time(2020, 1, 1))), "fixture date 2020");
     Check(SetFileTime(AppendFileName(metadata_root, "a4.txt"), TimeToFileTime(Time(2024, 1, 1))), "fixture date 2024");
     Check(SetFileTime(AppendFileName(metadata_root, "b10.txt"), TimeToFileTime(Time(2026, 1, 1))), "fixture date 2026");
-    FindFile folder_info(AppendFileName(metadata_root, "sub"));
-    Time folder_time = folder_info.GetLastWriteTime();
-    Date folder_date(folder_time.year, folder_time.month, folder_time.day);
     Check(SetFileTime(AppendFileName(metadata_root, "sub/child.txt"), TimeToFileTime(Time(2026, 1, 1))), "fixture child date");
     DirectoryScanSettings m;
     m.source_directory = metadata_root; m.enable_filtering = true; m.recursive = false;
@@ -153,6 +150,12 @@ CONSOLE_APP_MAIN {
     m.filter_rules[0].modified_from = Date(2026, 1, 1); m.filter_rules[0].modified_to = Date(2024, 1, 1);
     Check(DirectoryEngine::Scan(m).GetCount() == 3, "reversed date bounds normalized per step");
     m.filter_rules[0].action = FilterAction::Exclude;
+    Date folder_date;
+    {
+        FindFile folder_info(AppendFileName(metadata_root, "sub"));
+        Time folder_time = folder_info.GetLastWriteTime();
+        folder_date = Date(folder_time.year, folder_time.month, folder_time.day);
+    }
     m.filter_rules[0].modified_from = folder_date; m.filter_rules[0].modified_to = folder_date;
     Check(CountNamed(DirectoryEngine::Scan(m), "sub") == 0 && CountNamed(DirectoryEngine::Scan(m), "child") == 1,
           "outside date range removes parent without pruning child dates");

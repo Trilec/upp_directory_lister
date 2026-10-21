@@ -38,7 +38,7 @@ UiScrollPanel::Style MakeScrollPanelStyle();
 UiLabel::Style MakeLabelStyle(Color ink, UiLabelRole role = UiLabelRole::Body, bool transparent = true);
 UiLabel::Style MakeBadgeStyle(Color face, Color ink);
 UiBaseEdit::Style MakeEditStyle();
-UiDropdown::Style MakeDropdownStyle();
+UiDropdown::Style MakeDropdownStyle(int font_size = 10);
 UiCheckBox::Style MakeCheckStyle();
 UiButton::Style MakeActionStyle(bool primary);
 UiButton::Style MakeNavButtonStyle(Color face, Color ink, bool active);

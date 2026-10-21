@@ -63,6 +63,59 @@ GUI_APP_MAIN {
     String report;
     bool ok = source && output && generate;
     if(ok) {
+        MainWindow check;
+        check.Layout();
+        String root = AppendFileName(GetTempPath(), "DirLister-tests/glob-fixture");
+        RealizeDirectory(AppendFileName(root, "nested"));
+        SaveFile(AppendFileName(root, "keep.mat"), "material");
+        SaveFile(AppendFileName(root, "skip.cpp"), "source");
+        SaveFile(AppendFileName(root, "nested/also.mat"), "material");
+        SaveFile(AppendFileName(root, "nested/skip.txt"), "text");
+        Find<UiLineEdit>(check, GetCurrentDirectory())->SetData(root);
+        auto* type = Dropdown(check, "Name matches glob");
+        auto* pattern = Find<UiLineEdit>(*type->GetParent());
+        auto* list = Find<LineEdit>(check);
+        Dropdown(check, "Files")->SelectByData((int)FilterTarget::Both);
+        Dropdown(check, "Text Output")->SelectByData((int)OutputFormat::Tree);
+        Dropdown(check, "Native Slashes")->SelectByData((int)SlashMode::Unix);
+        pattern->SetData("*.mat");
+        Generate(check)->WhenAction();
+        ok = list->GetData().ToString().Find("skip.cpp") >= 0;
+        FindUiButton(*type->GetParent(), "Add")->WhenAction();
+        Generate(check)->WhenAction();
+        String result = list->GetData();
+        ok = ok && result.Find("keep.mat") >= 0 && result.Find("also.mat") >= 0
+                && result.Find("skip.cpp") < 0 && result.Find("skip.txt") < 0;
+        SetCheck(check, "Enable", false);
+        Generate(check)->WhenAction();
+        ok = ok && list->GetData().ToString().Find("skip.cpp") >= 0;
+        const auto& style = type->GetStyle();
+        ok = ok && style.font == style.metrics.text_font
+                && style.popup_item_style.font == style.font
+                && style.font.GetHeight() <= type->GetSize().cy - DPI(8)
+                && style.font.GetHeight() <= style.popup_item_height - DPI(8);
+        auto* appearance = Dropdown(check, "Dark");
+        check.Open();
+        for(int mode = 0; mode < 3; mode++) {
+            appearance->SelectByData(mode);
+            ok = ok && ((UiTheme::GetContext().mode == UiThemeMode::Dark) == (mode == 0));
+            Snapshot(check, AppendFileName(GetTempPath(), Format("DirLister-tests/appearance-%d.png", mode)));
+            type->OpenPopup();
+            Ctrl::ProcessEvents();
+            for(Ctrl* top : Ctrl::GetTopCtrls()) {
+                if(top == &check || top->GetSize().cy < DPI(100)) continue;
+                ImageDraw draw(top->GetSize());
+                top->DrawCtrl(draw);
+                PNGEncoder().SaveFile(AppendFileName(GetTempPath(), Format("DirLister-tests/dropdown-%d.png", mode)), (Image)draw);
+            }
+            type->ClosePopup();
+        }
+        check.Close();
+        appearance->SelectByData(0);
+        report << (ok ? "PASS: *.mat Add enables filtering in Tree/Unix output; unchecked Enable bypasses it\n"
+                      : "FAIL: *.mat filter flow\n");
+    }
+    if(ok) {
         String root = "I:/archive/fbb/BB_job/prod/work";
         if(!DirectoryExists(root)) root = AppendFileName(GetTempPath(), "DirLister-tests/scan-fixture");
         source->SetData(root);

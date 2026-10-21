@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.2 - 2026-10-22
+
+- Added Dark, Light and Olive Light appearances through a footer selector.
+- Reduced the filter-process font and aligned dropdown field/popup font metrics and vertical spacing.
+- Made inactive filtering explicit with an OFF badge and explanatory tooltip.
+- Verified the *.mat Add/Enable workflow with Tree output and Unix slashes in native regression checks.
+
 ## v1.0.1 - 2026-10-05
 
 - Moved Scan depth limit and Recursive below Location History so traversal controls remain visible on every tab.

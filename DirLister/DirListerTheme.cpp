@@ -7,24 +7,28 @@
 namespace Upp {
 namespace DirListerTheme {
 
-// Central palette used by the whole window. Keeping this here avoids repeating literal colors in the UI layer.
-Color BodyBg()     { return Color(0x0f, 0x11, 0x15); }
-Color SidebarBg()  { return Color(0x1a, 0x1d, 0x23); }
-Color Border()     { return Color(0x2d, 0x31, 0x39); }
-Color Text()       { return Color(0xd1, 0xd5, 0xdb); }
-Color Muted()      { return Color(0x6b, 0x72, 0x80); }
-Color Blue()       { return Color(0x3b, 0x82, 0xf6); }
-Color BlueDark()   { return Color(0x1e, 0x29, 0x3b); }
-Color BlueText()   { return Color(0x60, 0xa5, 0xfa); }
-Color GreenDark()  { return Color(0x06, 0x4e, 0x3b); }
-Color GreenText()  { return Color(0x34, 0xd3, 0x99); }
-Color AmberDark()  { return Color(0x45, 0x1a, 0x03); }
-Color AmberText()  { return Color(0xfb, 0xbf, 0x24); }
-Color OutputBg()   { return Black(); }
-Color OutputText() { return Color(0xa5, 0xb4, 0xfc); }
-Color StatusFace() { return Color(0x1e, 0x29, 0x3b); }
-Color StatusText() { return Color(0x38, 0xbd, 0xf8); }
-
+// Keep the application shell aligned with the selected Ui theme.
+namespace {
+bool Light() { return UiTheme::GetContext().mode != UiThemeMode::Dark; }
+bool Olive() { return UiTheme::GetPreset() == UiThemePreset::Olive; }
+UiOliveTokens OliveColors() { return UiTheme::GetOliveTokens(UiThemeMode::Light); }
+}
+Color BodyBg()     { return Olive() ? OliveColors().field : Light() ? White() : Color(15,17,21); }
+Color SidebarBg()  { return Olive() ? OliveColors().rail : Light() ? Color(241,245,249) : Color(26,29,35); }
+Color Border()     { return Olive() ? OliveColors().line : Light() ? Color(180,190,204) : Color(45,49,57); }
+Color Text()       { return Olive() ? OliveColors().text : Light() ? Color(30,41,59) : Color(209,213,219); }
+Color Muted()      { return Olive() ? OliveColors().muted : Light() ? Color(71,85,105) : Color(107,114,128); }
+Color Blue()       { return Olive() ? OliveColors().accent : Color(59,130,246); }
+Color BlueDark()   { return Olive() ? OliveColors().active : Light() ? Color(219,234,254) : Color(30,41,59); }
+Color BlueText()   { return Olive() ? OliveColors().accent : Light() ? Color(29,78,216) : Color(96,165,250); }
+Color GreenDark()  { return Olive() ? OliveColors().active : Light() ? Color(209,250,229) : Color(6,78,59); }
+Color GreenText()  { return Olive() ? OliveColors().accent : Light() ? Color(4,120,87) : Color(52,211,153); }
+Color AmberDark()  { return Olive() ? OliveColors().alert_face : Light() ? Color(254,243,199) : Color(69,26,3); }
+Color AmberText()  { return Olive() ? OliveColors().alert : Light() ? Color(146,64,14) : Color(251,191,36); }
+Color OutputBg()   { return Olive() ? OliveColors().panel : Light() ? White() : Black(); }
+Color OutputText() { return Olive() ? OliveColors().text : Light() ? Color(30,41,59) : Color(165,180,252); }
+Color StatusFace() { return BlueDark(); }
+Color StatusText() { return BlueText(); }
 Font AppSans(int px, bool bold)
 {
     Font f = SansSerifZ(px);
@@ -41,7 +45,7 @@ UiPanel::Style MakePanelStyle(Color face, Color frame, int radius, int margin)
     for(int i = 0; i < 4; i++) {
         s.palette.face[i] = UiFill::Solid(face);
         s.palette.frame[i] = frame;
-        s.palette.ink[i] = Color(224, 231, 255);
+        s.palette.ink[i] = Text();
     }
     s.metrics.face_enabled = true;
     s.metrics.frame_enabled = true;
@@ -118,7 +122,7 @@ UiBaseEdit::Style MakeEditStyle()
     for(int i = 0; i < 4; i++) {
         s.palette.face[i] = UiFill::Solid(BodyBg());
         s.palette.frame[i] = Border();
-        s.palette.ink[i] = White();
+        s.palette.ink[i] = Text();
     }
     s.metrics.face_enabled = true;
     s.metrics.frame_enabled = true;
@@ -135,33 +139,39 @@ UiBaseEdit::Style MakeEditStyle()
     return s;
 }
 
-UiDropdown::Style MakeDropdownStyle()
+UiDropdown::Style MakeDropdownStyle(int font_size)
 {
     UiDropdown::Style s = UiTheme::ResolveDropdown();
     for(int i = 0; i < 4; i++) {
         s.palette.face[i] = UiFill::Solid(BodyBg());
         s.palette.frame[i] = Border();
-        s.palette.ink[i] = White();
+        s.palette.ink[i] = Text();
     }
     s.metrics.face_enabled = true;
     s.metrics.frame_enabled = true;
     s.metrics.frame_width = DPI(1);
     s.metrics.radius = DPI(4);
     s.metrics.focus_enabled = false;
-    s.metrics.content_margin = Rect(DPI(8), DPI(5), DPI(8), DPI(5));
-    s.font = AppSans(10);
+    s.metrics.content_margin = Rect(DPI(8), DPI(3), DPI(8), DPI(3));
+    s.font = AppSans(font_size);
+    s.metrics.text_font = s.font;
+    s.metrics.use_text_font = true;
     s.transparent = false;
     for(int i = 0; i < 4; i++) {
         s.popup_item_style.palette.face[i] = UiFill::Solid(BodyBg());
         s.popup_item_style.palette.frame[i] = Null;
         s.popup_item_style.palette.ink[i] = Text();
     }
-    s.popup_item_style.palette.face[ST_HOT] = UiFill::Solid(Color(0x37, 0x41, 0x51));
-    s.popup_item_style.palette.ink[ST_HOT] = White();
-    s.popup_item_style.palette.face[ST_PRESSED] = UiFill::Solid(Blue());
-    s.popup_item_style.palette.ink[ST_PRESSED] = White();
+    s.popup_item_style.palette.face[ST_HOT] = UiFill::Solid(BlueDark());
+    s.popup_item_style.palette.ink[ST_HOT] = Text();
+    s.popup_item_style.palette.face[ST_PRESSED] = UiFill::Solid(BlueDark());
+    s.popup_item_style.palette.ink[ST_PRESSED] = Text();
     s.popup_item_style.palette.ink[ST_DISABLED] = Muted();
-    s.popup_item_style.font = AppSans(10);
+    s.popup_item_style.font = s.font;
+    s.popup_item_style.metrics.text_font = s.font;
+    s.popup_item_style.metrics.use_text_font = true;
+    s.popup_item_style.metrics.content_margin = Rect(DPI(8), DPI(3), DPI(8), DPI(3));
+    s.popup_item_height = max(DPI(28), s.font.GetHeight() + DPI(8));
     s.popup_frame_color = Border();
     s.popup_background_color = BodyBg();
     s.popup_frame_width = DPI(1);
@@ -180,7 +190,7 @@ UiCheckBox::Style MakeCheckStyle()
         s.indicator_palette.frame[i] = Muted();
         s.indicator_palette.ink[i] = White();
     }
-    s.indicator_palette.face[ST_HOT] = UiFill::Solid(Color(0x13, 0x17, 0x1d));
+    s.indicator_palette.face[ST_HOT] = UiFill::Solid(SidebarBg());
     s.indicator_palette.frame[ST_HOT] = Color(0x4b, 0x55, 0x63);
     s.indicator_palette.face[ST_PRESSED] = UiFill::Solid(Blue());
     s.indicator_palette.frame[ST_PRESSED] = Blue();
@@ -209,10 +219,10 @@ UiButton::Style MakeActionStyle(bool primary)
     for(int i = 0; i < 4; i++) {
         s.palette.face[i] = UiFill::Solid(primary ? Blue() : BodyBg());
         s.palette.frame[i] = primary ? Blue() : Color(0x4b, 0x55, 0x63);
-        s.palette.ink[i] = primary ? White() : Color(0x9c, 0xa3, 0xaf);
+        s.palette.ink[i] = primary ? White() : Muted();
     }
     s.palette.face[ST_HOT] = UiFill::Solid(primary ? Color(0x25, 0x63, 0xeb) : BodyBg());
-    s.palette.ink[ST_HOT] = primary ? White() : Color(0xe5, 0xe7, 0xeb);
+    s.palette.ink[ST_HOT] = primary ? White() : Text();
     s.font = AppSans(9, true);
     s.metrics.radius = DPI(999);
     s.metrics.frame_width = DPI(1);
@@ -227,7 +237,7 @@ UiButton::Style MakeNavButtonStyle(Color face, Color ink, bool active)
     for(int i = 0; i < 4; i++) {
         s.palette.face[i] = UiFill::Solid(active ? face : BodyBg());
         s.palette.frame[i] = Null;
-        s.palette.ink[i] = active ? ink : Color(0x4b, 0x55, 0x63);
+        s.palette.ink[i] = active ? ink : Muted();
     }
     s.palette.face[ST_HOT] = UiFill::Solid(active ? face : Color(0x13, 0x17, 0x1d));
     s.palette.ink[ST_HOT] = active ? ink : Text();
@@ -243,9 +253,9 @@ UiToolButton::Style MakeSmallButtonStyle()
 {
     UiToolButton::Style s = UiTheme::ResolveToolButton();
     for(int i = 0; i < 4; i++) {
-        s.palette.face[i] = UiFill::Solid(Color(0x37, 0x41, 0x51));
+        s.palette.face[i] = UiFill::Solid(BlueDark());
         s.palette.frame[i] = Border();
-        s.palette.ink[i] = White();
+        s.palette.ink[i] = Text();
     }
     s.font = AppSans(9, true);
     s.metrics.radius = DPI(4);
@@ -310,14 +320,14 @@ void StyleDocEdit(DocEdit& edit, Color ink, Color paper, Font font)
 
 void StyleEditField(EditField& edit, const char* null_text)
 {
-    edit.SetBackground(BodyBg()).SetColor(White()).SetFont(AppSans(10));
+    edit.SetBackground(BodyBg()).SetColor(Text()).SetFont(AppSans(10));
     if(null_text)
         edit.NullText(null_text, Muted());
 }
 
 void StyleDropDate(DropDate& edit)
 {
-    edit.SetBackground(BodyBg()).SetColor(White()).SetFont(AppSans(10));
+    edit.SetBackground(BodyBg()).SetColor(Text()).SetFont(AppSans(10));
 }
 
 }

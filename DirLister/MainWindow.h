@@ -148,6 +148,7 @@ private:
     UiLabel format_label_;
     UiDropdown output_format_;
     UiDropdown slash_mode_;
+    UiDropdown appearance_;
 
     // Rename page controls and backing model state.
     UiLabel rename_operator_label_;

@@ -6,6 +6,9 @@ String GetDirListerHelpText()
 {
     return String("DirLister ") + DIRLISTER_VERSION + R"HELP( - User Guide
 
+APPEARANCE
+Choose Dark, Light or Olive Light in the footer. Dark is the startup default.
+
 QUICK START
 Choose a Source Directory. The Filter stack chooses which entries are included;
 the Rename stack changes the names of those selected entries. Generate List
@@ -25,7 +28,8 @@ Each step selects Files, Directories, or Files + directories. The Apply at level
 controls only where that step applies, not how far scanning goes.
 It limits that step to a directory level: 0 means any level, 1 means source children,
 2 means their children, and so on. Add enables filtering. The Enable checkbox
-bypasses the whole Filter stack when switched off.
+bypasses the whole Filter stack when switched off. The Filter badge shows OFF.
+Typing a pattern alone does not activate it: click Add to save a rule first.
 
 Name matches glob: keep matching names. * matches any sequence, ? one character.
 Name excludes glob: remove matching names and skip matching folder branches.

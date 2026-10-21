@@ -1,4 +1,4 @@
-# DirLister 1.0.1
+# DirLister 1.0.2
 
 A native Windows desktop tool for filtering a directory, generating readable
 listings, previewing batch renames, and copying the selected files and folders.
@@ -32,6 +32,8 @@ system temporary directory, outside the checkout.
 4. Click **Generate List**, and choose Text, Tree, CSV or JSON output.
 5. Use **Rename** or **Transfer** when you want to act on that selection.
 
+The appearance selector in the footer offers **Dark**, **Light**, and **Olive Light**.
+
 **Help** opens a scrolling guide with step-by-step filter and rename recipes.
 Generate List is a preview. Apply Rename and Apply Transfer ask for confirmation
 before making filesystem changes.
@@ -61,7 +63,9 @@ Apply at level controls only where that rule runs; it does not limit traversal.
 Size steps always target files; folder sizes are not measured. Name processes
 support case sensitivity through the **Case** checkbox beside the pattern.
 First N supports Glob or Contains and a **Keep** count.
-Adding a step enables filtering; the Enable checkbox can bypass the entire stack.
+Click **Add** to save a process and enable filtering. Typing a pattern alone does
+not activate it. The **Enable** checkbox bypasses the saved stack when unchecked;
+the Filter badge explicitly shows **ON** or **OFF**.
 
 Glob uses `*` for any sequence and `?` for one character. Separate alternatives
 with `;`, such as `*.jpg;*.png`. Empty patterns match all names. Positive steps
@@ -168,7 +172,7 @@ Run from the repository root:
 
 ```powershell
 $repoPath = (Get-Location).Path
-$nests = "$repoPath,E:/apps/github/upp_Ui,E:/apps/github/upp_animation,E:/upp-18468/uppsrc"
+$nests = "$repoPath,E:/apps/github/upp_Ui,E:/apps/github/upp_animation,E:/apps/github/upp_render/render,E:/upp-18468/uppsrc"
 $cachePath = Join-Path $env:TEMP 'DirLister-umk'
 New-Item -ItemType Directory -Force bin/windows-x64 | Out-Null
 & E:/upp-18468/umk.exe $nests DirLister CLANGx64 --out-dir $cachePath -br +GUI "$repoPath/bin/windows-x64/DirLister.exe"

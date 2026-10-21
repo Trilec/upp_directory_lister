@@ -105,7 +105,7 @@ public:
         for(int i = 0; i < 4; i++) {
             title_style.palette.face[i] = UiFill::None();
             title_style.palette.frame[i] = Null;
-            title_style.palette.ink[i] = White();
+            title_style.palette.ink[i] = Text();
         }
         title_style.transparent = true;
         title_style.metrics.face_enabled = false;
@@ -296,6 +296,18 @@ void MainWindow::BuildUi()
     main_panel_.Add(exit_button_);
     main_panel_.Add(output_format_);
     main_panel_.Add(slash_mode_);
+    main_panel_.Add(appearance_);
+    appearance_.Add("Dark", 0).Add("Light", 1).Add("Olive Light", 2).Select(0);
+    appearance_.Tip("Application appearance");
+    appearance_.WhenSelect << [=](int) {
+        int choice = (int)appearance_.GetSelectedData();
+        UiTheme::Set(choice == 2 ? UiThemePreset::Olive : UiThemePreset::Pill,
+                     choice == 0 ? UiThemeMode::Dark : UiThemeMode::Light);
+        ApplyTheme();
+        SetSidebarPage(active_page_);
+        UpdateStatus("READY", false);
+        Refresh();
+    };
     main_panel_.Add(state_label_);
     main_panel_.Add(output_copy_button_);
     main_panel_.Add(output_copy_label_);
@@ -674,7 +686,7 @@ void MainWindow::ApplyTheme()
     for(int i = 0; i < 4; i++) {
         title_style.palette.face[i] = UiFill::None();
         title_style.palette.frame[i] = Null;
-        title_style.palette.ink[i] = White();
+        title_style.palette.ink[i] = Text();
     }
     title_style.transparent = true;
     title_style.metrics.face_enabled = false;
@@ -708,7 +720,7 @@ void MainWindow::ApplyTheme()
     transfer_target_label_.SetCustomStyle(MakeLabelStyle(AmberText(), UiLabelRole::Caption));
     transfer_filter_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     footer_meta_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
-    footer_path_.SetCustomStyle(MakeLabelStyle(Color(0x9c, 0xa3, 0xaf), UiLabelRole::Footnote));
+    footer_path_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     state_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     output_copy_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     output_edit_.SetFont(MonospaceZ(11));
@@ -724,17 +736,23 @@ void MainWindow::ApplyTheme()
     rename_preview_input_.SetCustomStyle(MakeEditStyle());
     transfer_target_.SetCustomStyle(MakeEditStyle());
     StyleEditField(rename_preview_count_);
+    StyleEditField(depth_limit_);
+    StyleEditField(filter_level_);
+    StyleEditField(filter_limit_);
+    StyleEditField(filter_size_min_);
+    StyleEditField(filter_size_max_);
+    StyleDocEdit(rename_preview_view_, Text(), SidebarBg(), MonospaceZ(10));
 
     UiList::Style list_style = UiTheme::ResolveList();
     list_style.palette.face[ST_NORMAL] = UiFill::Solid(BodyBg());
-    list_style.palette.face[ST_HOT] = UiFill::Solid(Color(0x37, 0x41, 0x51));
+    list_style.palette.face[ST_HOT] = UiFill::Solid(BlueDark());
     list_style.palette.face[ST_PRESSED] = UiFill::Solid(BlueDark());
     list_style.palette.frame[ST_NORMAL] = Null;
     list_style.palette.frame[ST_HOT] = Null;
     list_style.palette.frame[ST_PRESSED] = Null;
     list_style.palette.ink[ST_NORMAL] = Text();
-    list_style.palette.ink[ST_HOT] = White();
-    list_style.palette.ink[ST_PRESSED] = White();
+    list_style.palette.ink[ST_HOT] = Text();
+    list_style.palette.ink[ST_PRESSED] = Text();
     list_style.metrics.face_enabled = false;
     list_style.metrics.frame_enabled = false;
     list_style.metrics.focus_enabled = false;
@@ -743,10 +761,10 @@ void MainWindow::ApplyTheme()
     list_style.show_icons = false;
     list_style.show_checks = false;
     list_style.show_metadata_marker = false;
-    list_style.hot_face = Color(0x37, 0x41, 0x51);
-    list_style.hot_ink = White();
+    list_style.hot_face = BlueDark();
+    list_style.hot_ink = Text();
     list_style.selected_face = BlueDark();
-    list_style.selected_ink = White();
+    list_style.selected_ink = Text();
     list_style.selected_frame = Null;
     list_style.separator_color = Border();
     rename_stack_.SetCustomStyle(list_style);
@@ -759,7 +777,7 @@ void MainWindow::ApplyTheme()
     filter_range_hint_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Footnote));
     filter_level_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
     filter_limit_label_.SetCustomStyle(MakeLabelStyle(Muted(), UiLabelRole::Caption));
-    filter_type_.SetCustomStyle(MakeDropdownStyle());
+    filter_type_.SetCustomStyle(MakeDropdownStyle(9));
     filter_target_.SetCustomStyle(MakeDropdownStyle());
     filter_match_mode_.SetCustomStyle(MakeDropdownStyle());
     filter_size_unit_.SetCustomStyle(MakeDropdownStyle());
@@ -767,11 +785,13 @@ void MainWindow::ApplyTheme()
     filter_add_button_.SetCustomStyle(MakeSmallButtonStyle());
     filter_remove_button_.SetCustomStyle(MakeSmallButtonStyle());
     filter_save_button_.SetCustomStyle(MakeActionStyle(false));
-    StyleDropDate(filter_date_from_); StyleDropDate(filter_date_to_);
 
     source_history_.SetCustomStyle(MakeDropdownStyle());
     output_format_.SetCustomStyle(MakeDropdownStyle());
     slash_mode_.SetCustomStyle(MakeDropdownStyle());
+    appearance_.SetCustomStyle(MakeDropdownStyle(9));
+    StyleDropDate(filter_date_from_);
+    StyleDropDate(filter_date_to_);
     sort_primary_.SetCustomStyle(MakeDropdownStyle());
     sort_secondary_.SetCustomStyle(MakeDropdownStyle());
     dir_placement_.SetCustomStyle(MakeDropdownStyle());
@@ -917,13 +937,15 @@ void MainWindow::Layout()
     exit_button_.SetRect(right_group_x + DPI(190), row2_y, DPI(118), DPI(30));
 
     int output_top = wrap_top ? my + DPI(78) : my + DPI(44);
-    int footer_h = DPI(18);
+    int footer_h = DPI(28);
     output_panel_.SetRect(mx, output_top, ms.cx - mx * 2, ms.cy - output_top - footer_h - DPI(14));
     SyncOutputContentBounds();
     int footer_y = output_panel_.GetRect().bottom + DPI(8);
     output_copy_button_.SetRect(ms.cx - mx - DPI(112), footer_y - DPI(1), DPI(18), DPI(18));
     output_copy_label_.SetRect(ms.cx - mx - DPI(90), footer_y - DPI(1), DPI(74), DPI(18));
     footer_meta_.SetRect(mx, footer_y, DPI(160), footer_h);
+    appearance_.SetRect(mx + DPI(170), footer_y - DPI(2), DPI(118), DPI(24));
+    footer_path_.Show(ms.cx > DPI(740));
     footer_path_.SetRect(ms.cx - mx - DPI(450), footer_y, DPI(320), footer_h);
 }
 
@@ -1315,7 +1337,13 @@ bool MainWindow::HasActiveScanFilter() const
 
 void MainWindow::UpdateFilterIndicator()
 {
-    scan_filter_badge_.Show(HasActiveScanFilter());
+    bool active = HasActiveScanFilter();
+    scan_filter_badge_.Show();
+    scan_filter_badge_.SetText(active ? "ON" : "OFF");
+    scan_filter_badge_.SetCustomStyle(MakeBadgeStyle(active ? GreenDark() : BodyBg(), active ? GreenText() : Muted()));
+    scan_filter_badge_.Tip(active ? "Saved filter rules are active"
+                          : filter_rules_.IsEmpty() ? "No saved rules. Choose a process and click Add to filter."
+                                                   : "Filter stack is bypassed. Check Enable to apply saved rules.");
 }
 
 void MainWindow::HandleApplyRename()
