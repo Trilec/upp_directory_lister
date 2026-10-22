@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.0.3 - 2026-10-22
+
+- Matched the Ui demos' top-right Theme, Help and Exit icon actions.
+- Replaced the footer appearance dropdown with a Dark / Olive Light toggle; removed the plain Light option.
+- Restored the compact footer and updated Help and README for the new shell actions.
+
 ## v1.0.2 - 2026-10-22
 
 - Added Dark, Light and Olive Light appearances through a footer selector.

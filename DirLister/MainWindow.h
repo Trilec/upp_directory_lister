@@ -148,7 +148,7 @@ private:
     UiLabel format_label_;
     UiDropdown output_format_;
     UiDropdown slash_mode_;
-    UiDropdown appearance_;
+    UiToolButton theme_button_;
 
     // Rename page controls and backing model state.
     UiLabel rename_operator_label_;
@@ -192,8 +192,8 @@ private:
     // Output panel and footer.
     UiButton generate_button_;
     UiButton abort_button_;
-    UiButton help_button_;
-    UiButton exit_button_;
+    UiToolButton help_button_;
+    UiToolButton exit_button_;
     UiLabel state_label_;
     UiToolButton output_copy_button_;
     UiLabel output_copy_label_;

@@ -296,13 +296,12 @@ void MainWindow::BuildUi()
     main_panel_.Add(exit_button_);
     main_panel_.Add(output_format_);
     main_panel_.Add(slash_mode_);
-    main_panel_.Add(appearance_);
-    appearance_.Add("Dark", 0).Add("Light", 1).Add("Olive Light", 2).Select(0);
-    appearance_.Tip("Application appearance");
-    appearance_.WhenSelect << [=](int) {
-        int choice = (int)appearance_.GetSelectedData();
-        UiTheme::Set(choice == 2 ? UiThemePreset::Olive : UiThemePreset::Pill,
-                     choice == 0 ? UiThemeMode::Dark : UiThemeMode::Light);
+    main_panel_.Add(theme_button_);
+    theme_button_.SetIconSize(DPI(16), DPI(16)).Tip("Switch Dark / Olive Light");
+    theme_button_.WhenAction << [=] {
+        bool dark = UiTheme::GetContext().mode == UiThemeMode::Dark;
+        UiTheme::Set(dark ? UiThemePreset::Olive : UiThemePreset::Pill,
+                     dark ? UiThemeMode::Light : UiThemeMode::Dark);
         ApplyTheme();
         SetSidebarPage(active_page_);
         UpdateStatus("READY", false);
@@ -366,8 +365,7 @@ void MainWindow::BuildUi()
     generate_button_.WhenAction << [=] { HandleGenerate(); };
     abort_button_.SetText("ABORT");
     abort_button_.WhenAction << [=] { HandleAbort(); };
-    help_button_.SetText("HELP");
-    help_button_.SetIcon(ICON_DESIGN_SETTINGS_48()).SetIconSize(15, 15).SetContentGap(DPI(10));
+    help_button_.SetIcon(ICON_DESIGN_HELP_48()).SetIconSize(DPI(16), DPI(16)).Tip("Help");
     help_button_.WhenAction << [=] { HandleHelp(); };
 
     output_format_.Add("Text Output", (int)OutputFormat::Text)
@@ -381,8 +379,7 @@ void MainWindow::BuildUi()
     slash_mode_.WhenSelect << [=](int) { HandleSlashModeChanged(); };
 
     state_label_.SetText("IDLE");
-    exit_button_.SetText("EXIT");
-    exit_button_.SetIcon(ICON_NAVIGATION_EXIT_TO_APP_48()).SetIconSize(15, 15).SetContentGap(DPI(10));
+    exit_button_.SetIcon(ICON_DESIGN_MODE_OFF_ON_48()).SetIconSize(DPI(16), DPI(16)).Tip("Exit DirLister");
     exit_button_.WhenAction << [=] { Close(); };
     output_copy_button_.SetIcon(ICON_CONTENT_CONTENT_COPY_48())
                        .SetIconSize(14, 14)
@@ -789,7 +786,6 @@ void MainWindow::ApplyTheme()
     source_history_.SetCustomStyle(MakeDropdownStyle());
     output_format_.SetCustomStyle(MakeDropdownStyle());
     slash_mode_.SetCustomStyle(MakeDropdownStyle());
-    appearance_.SetCustomStyle(MakeDropdownStyle(9));
     StyleDropDate(filter_date_from_);
     StyleDropDate(filter_date_to_);
     sort_primary_.SetCustomStyle(MakeDropdownStyle());
@@ -839,22 +835,27 @@ void MainWindow::ApplyTheme()
     }
     generate_button_.SetCustomStyle(MakeActionStyle(true));
     abort_button_.SetCustomStyle(MakeActionStyle(false));
-    help_button_.SetCustomStyle(MakeActionStyle(false));
     rename_save_button_.SetCustomStyle(MakeActionStyle(false));
     rename_apply_button_.SetCustomStyle(MakeActionStyle(true));
     transfer_apply_button_.SetCustomStyle(MakeActionStyle(true));
-    exit_button_.SetCustomStyle(MakeActionStyle(true));
-    {
-        UiButton::Style s = exit_button_.GetStyle();
+    theme_button_.SetIcon(UiTheme::GetContext().mode == UiThemeMode::Dark
+                         ? ICON_ACTION_LIGHT_MODE_48() : ICON_ACTION_DARK_MODE_48());
+    for(UiToolButton* button : { &theme_button_, &help_button_, &exit_button_ }) {
+        UiToolButton::Style style = UiTheme::ResolveToolButton(UiRole::Standard);
+        style.transparent = true;
+        style.metrics.face_enabled = style.metrics.frame_enabled = false;
+        style.metrics.focus_enabled = false;
+        style.metrics.shadow.enabled = false;
+        style.metrics.content_margin = Rect(0, 0, 0, 0);
+        style.underline = false;
         for(int i = 0; i < 4; i++) {
-            s.palette.face[i] = UiFill::Solid(Color(0xdc, 0x26, 0x26));
-            s.palette.frame[i] = Color(0xdc, 0x26, 0x26);
-            s.palette.ink[i] = White();
-            s.palette.icon[i] = White();
+            style.palette.face[i] = UiFill::None();
+            style.palette.frame[i] = Null;
         }
-        s.palette.face[ST_HOT] = UiFill::Solid(Color(0xb9, 0x1c, 0x1c));
-        s.palette.face[ST_PRESSED] = UiFill::Solid(Color(0x99, 0x1b, 0x1b));
-        exit_button_.SetCustomStyle(s);
+        style.palette.icon[ST_NORMAL] = Muted();
+        style.palette.icon[ST_HOT] = Text();
+        style.palette.icon[ST_PRESSED] = BlueText();
+        button->SetIconRenderMode(UiIconRenderMode::MonoTint).SetCustomStyle(style);
     }
 
     UpdateFilterIndicator();
@@ -920,7 +921,7 @@ void MainWindow::Layout()
     int my = DPI(10);
     int content_w = ms.cx - mx * 2;
     int row1_left_w = DPI(122 + 10 + 82 + 26 + 128 + 8 + 132);
-    int row1_right_w = DPI(52 + 10 + 118 + 10 + 118);
+    int row1_right_w = DPI(52 + 12 + 34 * 3 + 8 * 2);
     bool wrap_top = content_w < row1_left_w + row1_right_w + DPI(16);
 
     int row1_y = my;
@@ -933,18 +934,18 @@ void MainWindow::Layout()
 
     int right_group_x = max(mx, ms.cx - mx - row1_right_w);
     state_label_.SetRect(right_group_x, row2_y + DPI(4), DPI(52), DPI(20));
-    help_button_.SetRect(right_group_x + DPI(62), row2_y, DPI(118), DPI(30));
-    exit_button_.SetRect(right_group_x + DPI(190), row2_y, DPI(118), DPI(30));
+    theme_button_.SetRect(right_group_x + DPI(64), row2_y - DPI(2), DPI(34), DPI(34));
+    help_button_.SetRect(right_group_x + DPI(106), row2_y - DPI(2), DPI(34), DPI(34));
+    exit_button_.SetRect(right_group_x + DPI(148), row2_y - DPI(2), DPI(34), DPI(34));
 
     int output_top = wrap_top ? my + DPI(78) : my + DPI(44);
-    int footer_h = DPI(28);
+    int footer_h = DPI(18);
     output_panel_.SetRect(mx, output_top, ms.cx - mx * 2, ms.cy - output_top - footer_h - DPI(14));
     SyncOutputContentBounds();
     int footer_y = output_panel_.GetRect().bottom + DPI(8);
     output_copy_button_.SetRect(ms.cx - mx - DPI(112), footer_y - DPI(1), DPI(18), DPI(18));
     output_copy_label_.SetRect(ms.cx - mx - DPI(90), footer_y - DPI(1), DPI(74), DPI(18));
     footer_meta_.SetRect(mx, footer_y, DPI(160), footer_h);
-    appearance_.SetRect(mx + DPI(170), footer_y - DPI(2), DPI(118), DPI(24));
     footer_path_.Show(ms.cx > DPI(740));
     footer_path_.SetRect(ms.cx - mx - DPI(450), footer_y, DPI(320), footer_h);
 }

@@ -1,4 +1,4 @@
-# DirLister 1.0.2
+# DirLister 1.0.3
 
 A native Windows desktop tool for filtering a directory, generating readable
 listings, previewing batch renames, and copying the selected files and folders.
@@ -32,7 +32,8 @@ system temporary directory, outside the checkout.
 4. Click **Generate List**, and choose Text, Tree, CSV or JSON output.
 5. Use **Rename** or **Transfer** when you want to act on that selection.
 
-The appearance selector in the footer offers **Dark**, **Light**, and **Olive Light**.
+The top-right theme icon switches between **Dark** and **Olive Light**, beside
+the Help and Exit icons. Hover over an icon to see its action.
 
 **Help** opens a scrolling guide with step-by-step filter and rename recipes.
 Generate List is a preview. Apply Rename and Apply Transfer ask for confirmation

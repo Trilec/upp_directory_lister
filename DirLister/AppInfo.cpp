@@ -7,7 +7,9 @@ String GetDirListerHelpText()
     return String("DirLister ") + DIRLISTER_VERSION + R"HELP( - User Guide
 
 APPEARANCE
-Choose Dark, Light or Olive Light in the footer. Dark is the startup default.
+Use the theme icon at the top right to switch Dark / Olive Light.
+The adjacent question-mark and power icons open Help and Exit. Hover for tooltips.
+Dark is the startup default.
 
 QUICK START
 Choose a Source Directory. The Filter stack chooses which entries are included;

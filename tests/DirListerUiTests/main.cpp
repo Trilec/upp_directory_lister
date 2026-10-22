@@ -43,6 +43,14 @@ void SetCheck(Ctrl& parent, const char* text, bool value) {
         SetCheck(*c, text, value);
     }
 }
+UiToolButton* FindToolButton(Ctrl& parent, const char* tip) {
+    for(Ctrl* c = parent.GetFirstChild(); c; c = c->GetNext()) {
+        if(auto* button = dynamic_cast<UiToolButton*>(c))
+            if(button->GetTip() == tip) return button;
+        if(auto* button = FindToolButton(*c, tip)) return button;
+    }
+    return nullptr;
+}
 void Snapshot(MainWindow& window, const char* path) {
     ImageDraw draw(window.GetSize());
     window.DrawCtrl(draw);
@@ -94,11 +102,17 @@ GUI_APP_MAIN {
                 && style.popup_item_style.font == style.font
                 && style.font.GetHeight() <= type->GetSize().cy - DPI(8)
                 && style.font.GetHeight() <= style.popup_item_height - DPI(8);
-        auto* appearance = Dropdown(check, "Dark");
+        auto* theme = FindToolButton(check, "Switch Dark / Olive Light");
+        auto* help = FindToolButton(check, "Help");
+        auto* exit = FindToolButton(check, "Exit DirLister");
+        ok = ok && theme && help && exit && theme->GetText().IsEmpty()
+                && help->GetText().IsEmpty() && exit->GetText().IsEmpty()
+                && theme->GetRect().top == help->GetRect().top
+                && help->GetRect().top == exit->GetRect().top;
         check.Open();
-        for(int mode = 0; mode < 3; mode++) {
-            appearance->SelectByData(mode);
+        for(int mode = 0; mode < 2; mode++) {
             ok = ok && ((UiTheme::GetContext().mode == UiThemeMode::Dark) == (mode == 0));
+            ok = ok && UiTheme::GetPreset() == (mode == 0 ? UiThemePreset::Pill : UiThemePreset::Olive);
             Snapshot(check, AppendFileName(GetTempPath(), Format("DirLister-tests/appearance-%d.png", mode)));
             type->OpenPopup();
             Ctrl::ProcessEvents();
@@ -109,9 +123,9 @@ GUI_APP_MAIN {
                 PNGEncoder().SaveFile(AppendFileName(GetTempPath(), Format("DirLister-tests/dropdown-%d.png", mode)), (Image)draw);
             }
             type->ClosePopup();
+            theme->WhenAction();
         }
         check.Close();
-        appearance->SelectByData(0);
         report << (ok ? "PASS: *.mat Add enables filtering in Tree/Unix output; unchecked Enable bypasses it\n"
                       : "FAIL: *.mat filter flow\n");
     }
