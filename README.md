@@ -8,14 +8,17 @@ Built with U++ and `upp_Ui`.
 
 ## Run
 
-Launch [bin/windows-x64/DirLister.exe](bin/windows-x64/DirLister.exe).
-This folder contains the latest Windows x64 Release build.
+Download the Windows x64 ZIP from [GitHub Releases](https://github.com/Trilec/upp_directory_lister/releases),
+extract it, and run `DirLister.exe`. No installer is needed.
+Local builds go in `bin/windows-x64`; binaries and release packages are ignored by Git.
 
 ## Repository layout
 
 | Folder | Contents |
 | --- | --- |
-| `bin/windows-x64` | Latest application executable |
+| `bin/windows-x64` | Local application executable (ignored) |
+| `bin/release` | Release folder, ZIP and SHA256 checksum (ignored) |
+| `scripts` | Release packaging command |
 | `DirLister` | Main U++ package and C++ source |
 | `docs` | Development guidance |
 | `design` | Screenshots and design references |
@@ -182,6 +185,25 @@ if ($LASTEXITCODE) { throw 'Build failed' }
 
 `bin/windows-x64` stays limited to the application; UMK intermediates live in the
 external cache. Debug and Release BLITZ builds are supported and verified here.
+
+## Package a release
+
+After building the current version in Release mode, run:
+
+```powershell
+./scripts/package-release.ps1
+```
+
+The script reads the version from `DirLister/AppInfo.h` and prepares
+`bin/release/DirLister-<version>-windows-x64/`, its ZIP, and a SHA256 checksum.
+The package includes the executable, quick-start README, full user guide,
+changelog and application/dependency license notices. Compiler caches and tests
+are excluded. Dependency source paths can be supplied with `-UppSource`,
+`-UiSource` and `-AnimationSource` on another workstation.
+
+Upload the ZIP to the matching GitHub Release; the checksum is an optional second
+asset. Generated packages stay local under the ignored `bin` folder. Move an
+existing version's package aside before rerunning the command for that version.
 
 ## Regression checks
 

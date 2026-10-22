@@ -5,6 +5,7 @@
 - Matched the Ui demos' top-right Theme, Help and Exit icon actions.
 - Replaced the footer appearance dropdown with a Dark / Olive Light toggle; removed the plain Light option.
 - Restored the compact footer and updated Help and README for the new shell actions.
+- Removed the executable from Git tracking; local builds stay in ignored `bin`, with a reusable ZIP packaging command for GitHub Releases.
 
 ## v1.0.2 - 2026-10-22
 
